@@ -36,7 +36,7 @@ Usage of ./wfh-church-organist:
 
 # Design choices
 + Simplicity - It should be easy to understand what the code is doing
-+ TCP - This program was implimented with TCP but could also use UDP. I chose TCP to avoid 'stuck notes' in the event a NoteOff packet was dropped. TCP has the downside of effectively 'losing notes'. When a lag spike hits, the TCP stream will catch up and all the MIDI events will happen as fast as possible, which does not respect the original timing.
++ TCP - This program was implimented with TCP but could also use UDP. I chose TCP to avoid 'stuck notes' in the event a NoteOff packet was dropped. TCP has the downside of effectively 'losing notes'. When a lag spike hits, the TCP stream will catch up and all the MIDI events will happen as fast as possible. This leads to gaps because the NoteOn and NoteOff happen almost instantaneously.
 + Single Binary - Instead of managing two binaries, "server/client", I combined them into a single binary. I felt the space increase was worth the flexability and simplicity of managing one binary. The mode is controlled with a single flag. There was also a lot of shared code between the server and client, so making it a single binary was easy.
 
 # Disclaimer
