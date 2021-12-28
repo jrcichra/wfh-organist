@@ -1,4 +1,4 @@
-# wfh-church-organist
+# wfh-church-organist [![Go Report Card](https://goreportcard.com/badge/github.com/jrcichra/wfh-church-organist)](https://goreportcard.com/report/github.com/jrcichra/wfh-church-organist) [![Go](https://github.com/jrcichra/wfh-church-organist/actions/workflows/go.yml/badge.svg)](https://github.com/jrcichra/wfh-church-organist/actions/workflows/go.yml)
 
 Be a Work-From-Home Church Organist. Send regular MIDI over regular TCP/IP.
 
