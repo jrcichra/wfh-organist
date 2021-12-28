@@ -25,12 +25,12 @@ func main() {
 	// operate in client or server mode
 	switch strings.ToLower(*mode) {
 	case "server":
-		server(*midiPort)
+		server(*midiPort, *serverPort)
 	case "client":
 		client(*midiPort, *serverIP, *serverPort)
 	case "local":
 		// run both and sleep forever
-		go server(*midiPort)
+		go server(*midiPort, *serverPort)
 		go client(*midiPort, *serverIP, *serverPort)
 		select {}
 	default:

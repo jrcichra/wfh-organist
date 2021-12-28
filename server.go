@@ -4,6 +4,7 @@ import (
 	"encoding/gob"
 	"log"
 	"net"
+	"strconv"
 	"time"
 
 	"github.com/fatih/color"
@@ -11,7 +12,7 @@ import (
 	driver "gitlab.com/gomidi/rtmididrv"
 )
 
-func server(midiPort int) {
+func server(midiPort int, serverPort int) {
 	drv, err := driver.New()
 	must(err)
 
@@ -38,7 +39,7 @@ func server(midiPort int) {
 	}
 
 	// wait for someone to connect to the server
-	l, err := net.Listen("tcp", ":3131")
+	l, err := net.Listen("tcp", ":"+strconv.Itoa(serverPort))
 	must(err)
 	defer l.Close()
 
@@ -48,7 +49,7 @@ func server(midiPort int) {
 		c, err := l.Accept()
 		must(err)
 		log.Println("Connection from:", c.RemoteAddr())
-
+		log.Println("Ready to play music!")
 		// handle the connection in a new goroutine
 		go func() {
 			// will read from network.
