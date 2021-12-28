@@ -9,7 +9,7 @@ This program listens to MIDI input and sends the notes over TCP. The program use
 + Remote control a MIDI keyboard over the LAN
 + Remote control a MIDI keyboard over the Internet
 + Test modifications to `server.go` or `client.go` locally knowning it would work the same on the LAN or the Internet, because the program goes through the IP stack regardless of what mode
-+ Modify MIDI input in `client.go` to work with the organ attached on the other end
++ Conditionally modify MIDI channels in `client.go` to work with the organ attached on the other end
 
 # Build notes
 I used Go 1.17 for this project, but older versions will probably work. There are external cgo dependencies so you'll need a few packages from your distro's package manager. This also means I can't easily provide cross-architecture targets
