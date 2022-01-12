@@ -5,18 +5,30 @@ import (
 	"io"
 	"log"
 	"net"
+	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"gitlab.com/gomidi/midi/writer"
 	driver "gitlab.com/gomidi/rtmididrv"
 )
+
+func handleMs(m time.Time) int64 {
+	ms := time.Since(m).Milliseconds()
+	prom_last_ms.Set(float64(ms))
+	return ms
+}
 
 func server(midiPort int, serverPort int, protocol string) {
 	drv, err := driver.New()
 	must(err)
 
+	// serve metrics
+	http.Handle("/metrics", promhttp.Handler())
+	// http listener
+	go http.ListenAndServe(":9101", nil)
 	// make sure to close all open ports at the end
 	defer drv.Close()
 
@@ -70,41 +82,40 @@ func server(midiPort int, serverPort int, protocol string) {
 				// determine the type of message
 				switch m := t.Body.(type) {
 				case NoteOn:
-					ms := time.Since(m.Time).Milliseconds()
+					ms := handleMs(m.Time)
 					cont(writer.NoteOn(writers[m.Channel], m.Key, m.Velocity))
 					midiTuxPrint(color.FgHiGreen, c.RemoteAddr(), m, ms)
 				case NoteOff:
-					ms := time.Since(m.Time).Milliseconds()
+					ms := handleMs(m.Time)
 					cont(writer.NoteOff(writers[m.Channel], m.Key))
 					midiTuxPrint(color.FgHiRed, c.RemoteAddr(), m, ms)
 				case ProgramChange:
-					ms := time.Since(m.Time).Milliseconds()
+					ms := handleMs(m.Time)
 					cont(writer.ProgramChange(writers[m.Channel], m.Program))
 					midiTuxPrint(color.FgHiYellow, c.RemoteAddr(), m, ms)
 				case Aftertouch:
-					ms := time.Since(m.Time).Milliseconds()
+					ms := handleMs(m.Time)
 					cont(writer.Aftertouch(writers[m.Channel], m.Pressure))
 					midiTuxPrint(color.FgHiBlue, c.RemoteAddr(), m, ms)
 				case ControlChange:
-					ms := time.Since(m.Time).Milliseconds()
+					ms := handleMs(m.Time)
 					cont(writer.ControlChange(writers[m.Channel], m.Controller, m.Value))
 					midiTuxPrint(color.FgHiMagenta, c.RemoteAddr(), m, ms)
 				case NoteOffVelocity:
-					ms := time.Since(m.Time).Milliseconds()
+					ms := handleMs(m.Time)
 					cont(writer.NoteOffVelocity(writers[m.Channel], m.Key, m.Velocity))
 					midiTuxPrint(color.FgHiMagenta, c.RemoteAddr(), m, ms)
 				case Pitchbend:
-					ms := time.Since(m.Time).Milliseconds()
+					ms := handleMs(m.Time)
 					cont(writer.Pitchbend(writers[m.Channel], m.Value))
 					midiTuxPrint(color.FgHiMagenta, c.RemoteAddr(), m, ms)
 				case PolyAftertouch:
-					ms := time.Since(m.Time).Milliseconds()
+					ms := handleMs(m.Time)
 					cont(writer.PolyAftertouch(writers[m.Channel], m.Key, m.Pressure))
 					midiTuxPrint(color.FgHiMagenta, c.RemoteAddr(), m, ms)
 				default:
 					log.Println("Unknown message type:", m)
 				}
-
 			}
 		}()
 	}

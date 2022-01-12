@@ -8,18 +8,6 @@ import (
 	driver "gitlab.com/gomidi/rtmididrv"
 )
 
-const (
-	NOTEON          = "Note On"
-	NOTEOFF         = "Note Off"
-	PROGRAMCHANGE   = "Program Change"
-	AFTERTOUCH      = "Aftertouch"
-	CONTROLCHANGE   = "Control Change"
-	NOTEOFFVELOCITY = "Note Off Velocity"
-	PITCHBEND       = "Pitchbend"
-	POLYAFTERTOUCH  = "Poly Aftertouch"
-	// SYSTEMEXCLUSIVE="SYSTEMEXCLUSIVE"
-)
-
 func must(err error) {
 	if err != nil {
 		panic(err.Error())

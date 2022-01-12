@@ -39,15 +39,15 @@ func main() {
 	// operate in client or server mode
 	switch strings.ToLower(*mode) {
 	case "server":
-		server(*midiPort, *serverPort, *protocol)
+		go server(*midiPort, *serverPort, *protocol)
 	case "client":
-		client(*midiPort, *serverIP, *serverPort, *protocol)
+		go client(*midiPort, *serverIP, *serverPort, *protocol)
 	case "local":
 		// run both and sleep forever
 		go server(*midiPort, *serverPort, *protocol)
 		go client(*midiPort, *serverIP, *serverPort, *protocol)
-		select {}
 	default:
-		log.Printf("Unknown mode: %s. Must be 'server' or 'client'\n", *mode)
+		log.Fatalf("Unknown mode: %s. Must be 'server' or 'client'\n", *mode)
 	}
+	select {}
 }
