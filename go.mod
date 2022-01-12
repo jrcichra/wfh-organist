@@ -1,4 +1,4 @@
-module github.com/jrcichra/wfh-church-organist
+module github.com/jrcichra/wfh-organist
 
 go 1.17
 

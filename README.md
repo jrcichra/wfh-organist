@@ -1,6 +1,6 @@
-# wfh-church-organist [![Go Report Card](https://goreportcard.com/badge/github.com/jrcichra/wfh-church-organist)](https://goreportcard.com/report/github.com/jrcichra/wfh-church-organist) [![Go](https://github.com/jrcichra/wfh-church-organist/actions/workflows/go.yml/badge.svg)](https://github.com/jrcichra/wfh-church-organist/actions/workflows/go.yml)
+# wfh-organist [![Go Report Card](https://goreportcard.com/badge/github.com/jrcichra/wfh-organist)](https://goreportcard.com/report/github.com/jrcichra/wfh-organist) [![Go](https://github.com/jrcichra/wfh-organist/actions/workflows/go.yml/badge.svg)](https://github.com/jrcichra/wfh-organist/actions/workflows/go.yml)
 
-Be a Work-From-Home Church Organist. Send regular MIDI over regular TCP/IP.
+Be a Work-From-Home Organist. Send regular MIDI over regular TCP/IP.
 
 # Introduction
 
@@ -16,12 +16,12 @@ I used Go 1.17 for this project, but older versions will probably work. There ar
 
 # Usage
 + Download a recent version of [Go](https://go.dev/dl/) for your operating system 
-+ `git clone https://github.com/jrcichra/wfh-church-organist.git`
++ `git clone https://github.com/jrcichra/wfh-organist.git`
 + `go build`
-+ `./wfh-church-organist -help`
++ `./wfh-organist -help`
 
 ```
-Usage of ./wfh-church-organist:
+Usage of ./wfh-organist:
   -list
         list available ports
   -midi int
