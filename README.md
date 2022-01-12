@@ -45,6 +45,7 @@ This program is not intended for production use. I do not claim that this will w
 # Testing
 This program was tested under a variety of real-world latency conditions, all with minimal packet loss. Your mileage may vary.
 + Local mode - `0-1ms` delay
-+ Starlink -> Linode Canada  -> Starlink - `50-70ms` delay  - `Great experience`
-+ Starlink -> Oracle Ashburn -> Starlink - `30-40ms` delay  - `Good experience`
++ Starlink -> Cloudflare EWR -> Starlink - `30-40ms` delay  - `Great experience`
++ Starlink -> Oracle Ashburn -> Starlink - `30-40ms` delay  - `Great experience`
++ Starlink -> Linode Canada  -> Starlink - `50-70ms` delay  - `Good experience`
 + T-Mobile IoT -> Oracle Ashburn -> T-Mobile IoT - `100-170ms` delay - `Tolerable experience`
