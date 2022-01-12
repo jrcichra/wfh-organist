@@ -2,11 +2,60 @@ package main
 
 import "time"
 
-// This is neccessary because NoteOn and NoteOff do not expose fields, so gob can't encode them.
-// Since I'm only dealing with NoteOn and NoteOff, I can key off of the Velocity field.
-type TCPMessage struct {
+type NoteOn struct {
 	Time     time.Time
 	Channel  uint8
 	Key      uint8
 	Velocity uint8
+}
+
+type NoteOff struct {
+	Time    time.Time
+	Channel uint8
+	Key     uint8
+}
+
+type ProgramChange struct {
+	Time    time.Time
+	Channel uint8
+	Program uint8
+}
+
+type Aftertouch struct {
+	Time     time.Time
+	Channel  uint8
+	Pressure uint8
+}
+
+type ControlChange struct {
+	Time       time.Time
+	Channel    uint8
+	Controller uint8
+	Value      uint8
+}
+
+type NoteOffVelocity struct {
+	Time     time.Time
+	Channel  uint8
+	Key      uint8
+	Velocity uint8
+}
+
+type Pitchbend struct {
+	Time     time.Time
+	Channel  uint8
+	Value    int16
+	AbsValue uint16
+}
+
+type PolyAftertouch struct {
+	Time     time.Time
+	Channel  uint8
+	Key      uint8
+	Pressure uint8
+}
+
+// Get around gob types
+type TCPMessage struct {
+	Body interface{}
 }

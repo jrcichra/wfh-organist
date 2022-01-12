@@ -1,10 +1,23 @@
 package main
 
 import (
+	"encoding/gob"
 	"log"
 
 	"gitlab.com/gomidi/midi"
 	driver "gitlab.com/gomidi/rtmididrv"
+)
+
+const (
+	NOTEON          = "Note On"
+	NOTEOFF         = "Note Off"
+	PROGRAMCHANGE   = "Program Change"
+	AFTERTOUCH      = "Aftertouch"
+	CONTROLCHANGE   = "Control Change"
+	NOTEOFFVELOCITY = "Note Off Velocity"
+	PITCHBEND       = "Pitchbend"
+	POLYAFTERTOUCH  = "Poly Aftertouch"
+	// SYSTEMEXCLUSIVE="SYSTEMEXCLUSIVE"
 )
 
 func must(err error) {
@@ -53,4 +66,15 @@ func getLists() {
 
 	printInPorts(ins)
 	printOutPorts(outs)
+}
+
+func registerGobTypes() {
+	gob.Register(NoteOn{})
+	gob.Register(NoteOff{})
+	gob.Register(ProgramChange{})
+	gob.Register(Aftertouch{})
+	gob.Register(ControlChange{})
+	gob.Register(NoteOffVelocity{})
+	gob.Register(Pitchbend{})
+	gob.Register(PolyAftertouch{})
 }

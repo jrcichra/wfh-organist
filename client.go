@@ -13,7 +13,7 @@ import (
 	driver "gitlab.com/gomidi/rtmididrv"
 )
 
-func client(midiPort int, serverIP string, serverPort int) {
+func client(midiPort int, serverIP string, serverPort int, protocol string) {
 
 	drv, err := driver.New()
 	must(err)
@@ -34,7 +34,7 @@ func client(midiPort int, serverIP string, serverPort int) {
 
 	serverStr := fmt.Sprintf("%s:%d", serverIP, serverPort)
 	log.Println("Connecting to " + serverStr + "...")
-	conn, err := net.Dial("tcp", serverStr)
+	conn, err := net.Dial(protocol, serverStr)
 	must(err)
 	log.Println("Connected to", serverStr)
 
@@ -51,19 +51,68 @@ func client(midiPort int, serverIP string, serverPort int) {
 				// this is just so we can deal with a single known struct with exposed fields
 				switch v := msg.(type) {
 				case channel.NoteOn:
-					encoder.Encode(TCPMessage{
+					err := encoder.Encode(TCPMessage{Body: NoteOn{
 						Time:     time.Now(),
 						Channel:  v.Channel(),
 						Key:      v.Key(),
 						Velocity: v.Velocity(),
-					})
+					}})
+					must(err)
 				case channel.NoteOff:
-					encoder.Encode(TCPMessage{
+					err := encoder.Encode(TCPMessage{Body: NoteOff{
+						Time:    time.Now(),
+						Channel: v.Channel(),
+						Key:     v.Key(),
+					}})
+					must(err)
+				case channel.ProgramChange:
+					err := encoder.Encode(TCPMessage{Body: ProgramChange{
+						Time:    time.Now(),
+						Channel: v.Channel(),
+						Program: v.Program(),
+					}})
+					must(err)
+				case channel.Aftertouch:
+					err := encoder.Encode(TCPMessage{Body: Aftertouch{
+						Time:     time.Now(),
+						Channel:  v.Channel(),
+						Pressure: v.Pressure(),
+					}})
+					must(err)
+				case channel.ControlChange:
+					err := encoder.Encode(TCPMessage{Body: ControlChange{
+						Time:       time.Now(),
+						Channel:    v.Channel(),
+						Controller: v.Controller(),
+						Value:      v.Value(),
+					}})
+					must(err)
+				case channel.NoteOffVelocity:
+					err := encoder.Encode(TCPMessage{Body: NoteOffVelocity{
 						Time:     time.Now(),
 						Channel:  v.Channel(),
 						Key:      v.Key(),
-						Velocity: 0,
-					})
+						Velocity: v.Velocity(),
+					}})
+					must(err)
+				case channel.Pitchbend:
+					err := encoder.Encode(TCPMessage{Body: Pitchbend{
+						Time:     time.Now(),
+						Channel:  v.Channel(),
+						Value:    v.Value(),
+						AbsValue: v.AbsValue(),
+					}})
+					must(err)
+				case channel.PolyAftertouch:
+					err := encoder.Encode(TCPMessage{Body: PolyAftertouch{
+						Time:     time.Now(),
+						Channel:  v.Channel(),
+						Key:      v.Key(),
+						Pressure: v.Pressure(),
+					}})
+					must(err)
+				default:
+					log.Println("Unknown message type:", v)
 				}
 			}()
 		}),

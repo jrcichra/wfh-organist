@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/gob"
+	"io"
 	"log"
 	"net"
 	"strconv"
@@ -12,7 +13,7 @@ import (
 	driver "gitlab.com/gomidi/rtmididrv"
 )
 
-func server(midiPort int, serverPort int) {
+func server(midiPort int, serverPort int, protocol string) {
 	drv, err := driver.New()
 	must(err)
 
@@ -39,7 +40,7 @@ func server(midiPort int, serverPort int) {
 	}
 
 	// wait for someone to connect to the server
-	l, err := net.Listen("tcp", ":"+strconv.Itoa(serverPort))
+	l, err := net.Listen(protocol, ":"+strconv.Itoa(serverPort))
 	must(err)
 	defer l.Close()
 
@@ -54,21 +55,56 @@ func server(midiPort int, serverPort int) {
 		go func() {
 			// will read from network.
 			dec := gob.NewDecoder(c)
+			// gob.Register(ProgramChange{})
+
 			// handle TCP messages forever
 			for {
-				t := TCPMessage{}
-				dec.Decode(&t)
-				// print time delay in ms
-				ms := time.Since(t.Time).Milliseconds()
-
-				// NoteOff = Velocity 0
-				if t.Velocity == 0 {
-					cont(writer.NoteOff(writers[t.Channel], t.Key))
-					midiTuxPrint(color.FgHiRed, c.RemoteAddr(), t, ms)
-				} else {
-					cont(writer.NoteOn(writers[t.Channel], t.Key, t.Velocity))
-					midiTuxPrint(color.FgHiGreen, c.RemoteAddr(), t, ms)
+				var t TCPMessage
+				err := dec.Decode(&t)
+				if err == io.EOF {
+					log.Println("Connection closed by client.")
+					return
 				}
+				must(err)
+
+				// determine the type of message
+				switch m := t.Body.(type) {
+				case NoteOn:
+					ms := time.Since(m.Time).Milliseconds()
+					cont(writer.NoteOn(writers[m.Channel], m.Key, m.Velocity))
+					midiTuxPrint(color.FgHiGreen, c.RemoteAddr(), m, ms)
+				case NoteOff:
+					ms := time.Since(m.Time).Milliseconds()
+					cont(writer.NoteOff(writers[m.Channel], m.Key))
+					midiTuxPrint(color.FgHiRed, c.RemoteAddr(), m, ms)
+				case ProgramChange:
+					ms := time.Since(m.Time).Milliseconds()
+					cont(writer.ProgramChange(writers[m.Channel], m.Program))
+					midiTuxPrint(color.FgHiYellow, c.RemoteAddr(), m, ms)
+				case Aftertouch:
+					ms := time.Since(m.Time).Milliseconds()
+					cont(writer.Aftertouch(writers[m.Channel], m.Pressure))
+					midiTuxPrint(color.FgHiBlue, c.RemoteAddr(), m, ms)
+				case ControlChange:
+					ms := time.Since(m.Time).Milliseconds()
+					cont(writer.ControlChange(writers[m.Channel], m.Controller, m.Value))
+					midiTuxPrint(color.FgHiMagenta, c.RemoteAddr(), m, ms)
+				case NoteOffVelocity:
+					ms := time.Since(m.Time).Milliseconds()
+					cont(writer.NoteOffVelocity(writers[m.Channel], m.Key, m.Velocity))
+					midiTuxPrint(color.FgHiMagenta, c.RemoteAddr(), m, ms)
+				case Pitchbend:
+					ms := time.Since(m.Time).Milliseconds()
+					cont(writer.Pitchbend(writers[m.Channel], m.Value))
+					midiTuxPrint(color.FgHiMagenta, c.RemoteAddr(), m, ms)
+				case PolyAftertouch:
+					ms := time.Since(m.Time).Milliseconds()
+					cont(writer.PolyAftertouch(writers[m.Channel], m.Key, m.Pressure))
+					midiTuxPrint(color.FgHiMagenta, c.RemoteAddr(), m, ms)
+				default:
+					log.Println("Unknown message type:", m)
+				}
+
 			}
 		}()
 	}

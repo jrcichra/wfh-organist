@@ -16,6 +16,7 @@ func main() {
 	midiPort := flag.Int("midi", defaultMidiPort, "midi port (default "+strconv.Itoa(defaultMidiPort)+")")
 	list := flag.Bool("list", false, "list available ports")
 	mode := flag.String("mode", "local", "client, server, or local (runs both)")
+	protocol := flag.String("protocol", "tcp", "tcp only (udp not implemented yet)")
 	flag.Parse()
 
 	// print MIDI IO if requested
@@ -24,16 +25,27 @@ func main() {
 		return
 	}
 
+	switch *protocol {
+	case "tcp":
+		// do nothing
+	default:
+		log.Println("Invalid protocol")
+		return
+	}
+
+	// register types to gob
+	registerGobTypes()
+
 	// operate in client or server mode
 	switch strings.ToLower(*mode) {
 	case "server":
-		server(*midiPort, *serverPort)
+		server(*midiPort, *serverPort, *protocol)
 	case "client":
-		client(*midiPort, *serverIP, *serverPort)
+		client(*midiPort, *serverIP, *serverPort, *protocol)
 	case "local":
 		// run both and sleep forever
-		go server(*midiPort, *serverPort)
-		go client(*midiPort, *serverIP, *serverPort)
+		go server(*midiPort, *serverPort, *protocol)
+		go client(*midiPort, *serverIP, *serverPort, *protocol)
 		select {}
 	default:
 		log.Printf("Unknown mode: %s. Must be 'server' or 'client'\n", *mode)
