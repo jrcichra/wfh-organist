@@ -8,7 +8,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"strings"
 	"time"
 
 	"gitlab.com/gomidi/midi"
@@ -39,21 +38,38 @@ func client(midiPort int, serverIP string, serverPort int, protocol string, stdi
 func stdinClient(serverIP string, serverPort int, protocol string) {
 
 	channel := make(chan Raw)
+
 	//get stdin in a goroutine
 	go func() {
 		scanner := bufio.NewScanner(os.Stdin)
+		// word at a time
+		scanner.Split(bufio.ScanWords)
+		// keep count, send 3 at a time
+		count := 0
+		// hold bytes
+		bytes := make([]byte, 0)
 		for scanner.Scan() {
-			// read all the tokens in this line and split them by whitespace
-			tokens := strings.Fields(scanner.Text())
-			for _, token := range tokens {
-				//convert token string to hex code
-				hexToken, err := hex.DecodeString(token)
-				must(err)
+			//convert token string to hex code
+			text := scanner.Text()
+			// each token must be size 2
+			if len(text) != 2 {
+				panic("Token must be size 2")
+			}
+			hexToken, err := hex.DecodeString(text)
+			must(err)
+			// append to bytes
+			bytes = append(bytes, hexToken...)
+			if count >= 2 {
 				//send hex code to channel
 				channel <- Raw{
 					Time: time.Now(),
-					Data: hexToken,
+					Data: bytes,
 				}
+				count = 0
+				// clear bytes
+				bytes = make([]byte, 0)
+			} else {
+				count++
 			}
 		}
 		if err := scanner.Err(); err != nil {
