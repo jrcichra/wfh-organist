@@ -104,15 +104,21 @@ func server(midiPort int, serverPort int, protocol string) {
 				case NoteOffVelocity:
 					ms := handleMs(m.Time)
 					cont(writer.NoteOffVelocity(writers[m.Channel], m.Key, m.Velocity))
-					midiTuxPrint(color.FgHiMagenta, c.RemoteAddr(), m, ms)
+					midiTuxPrint(color.FgHiYellow, c.RemoteAddr(), m, ms)
 				case Pitchbend:
 					ms := handleMs(m.Time)
 					cont(writer.Pitchbend(writers[m.Channel], m.Value))
-					midiTuxPrint(color.FgHiMagenta, c.RemoteAddr(), m, ms)
+					midiTuxPrint(color.FgMagenta, c.RemoteAddr(), m, ms)
 				case PolyAftertouch:
 					ms := handleMs(m.Time)
 					cont(writer.PolyAftertouch(writers[m.Channel], m.Key, m.Pressure))
-					midiTuxPrint(color.FgHiMagenta, c.RemoteAddr(), m, ms)
+					midiTuxPrint(color.FgCyan, c.RemoteAddr(), m, ms)
+				case Raw:
+					ms := handleMs(m.Time)
+					midiTuxPrint(color.FgBlue, c.RemoteAddr(), m, ms)
+					// write the raw bytes to the MIDI device
+					_, err := out.Write(m.Data)
+					cont(err)
 				default:
 					log.Println("Unknown message type:", m)
 				}

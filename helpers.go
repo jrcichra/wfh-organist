@@ -65,4 +65,5 @@ func registerGobTypes() {
 	gob.Register(NoteOffVelocity{})
 	gob.Register(Pitchbend{})
 	gob.Register(PolyAftertouch{})
+	gob.Register(Raw{})
 }

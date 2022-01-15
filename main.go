@@ -17,7 +17,14 @@ func main() {
 	list := flag.Bool("list", false, "list available ports")
 	mode := flag.String("mode", "local", "client, server, or local (runs both)")
 	protocol := flag.String("protocol", "tcp", "tcp only (udp not implemented yet)")
+	stdinMode := flag.Bool("stdin", false, "read from stdin")
 	flag.Parse()
+
+	// make sure stdinMode is only true if mode is client
+	if *stdinMode && strings.ToLower(*mode) != "client" {
+		log.Println("stdin mode can only be used with client mode")
+		return
+	}
 
 	// print MIDI IO if requested
 	if *list {
@@ -29,7 +36,7 @@ func main() {
 	case "tcp":
 		// do nothing
 	default:
-		log.Println("Invalid protocol")
+		log.Println("Invalid protocol", *protocol)
 		return
 	}
 
@@ -41,11 +48,11 @@ func main() {
 	case "server":
 		go server(*midiPort, *serverPort, *protocol)
 	case "client":
-		go client(*midiPort, *serverIP, *serverPort, *protocol)
+		go client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode)
 	case "local":
 		// run both and sleep forever
 		go server(*midiPort, *serverPort, *protocol)
-		go client(*midiPort, *serverIP, *serverPort, *protocol)
+		go client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode)
 	default:
 		log.Fatalf("Unknown mode: %s. Must be 'server' or 'client'\n", *mode)
 	}

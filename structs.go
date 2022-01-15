@@ -55,6 +55,12 @@ type PolyAftertouch struct {
 	Pressure uint8
 }
 
+// Raw sends raw bytes to the server
+type Raw struct {
+	Time time.Time
+	Data []byte
+}
+
 // Get around gob types
 type TCPMessage struct {
 	Body interface{}

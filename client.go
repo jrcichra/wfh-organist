@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"encoding/gob"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"net"
+	"os"
+	"strings"
 	"time"
 
 	"gitlab.com/gomidi/midi"
@@ -13,7 +17,70 @@ import (
 	driver "gitlab.com/gomidi/rtmididrv"
 )
 
-func client(midiPort int, serverIP string, serverPort int, protocol string) {
+func dial(serverIP string, serverPort int, protocol string) net.Conn {
+	serverStr := fmt.Sprintf("%s:%d", serverIP, serverPort)
+	log.Println("Connecting to " + serverStr + "...")
+	conn, err := net.Dial(protocol, serverStr)
+	must(err)
+	log.Println("Connected to", serverStr)
+	return conn
+}
+
+func client(midiPort int, serverIP string, serverPort int, protocol string, stdinMode bool) {
+
+	switch stdinMode {
+	case true:
+		stdinClient(serverIP, serverPort, protocol)
+	default:
+		midiClient(midiPort, serverIP, serverPort, protocol)
+	}
+}
+
+func stdinClient(serverIP string, serverPort int, protocol string) {
+
+	channel := make(chan Raw)
+	//get stdin in a goroutine
+	go func() {
+		scanner := bufio.NewScanner(os.Stdin)
+		for scanner.Scan() {
+			// read all the tokens in this line and split them by whitespace
+			tokens := strings.Fields(scanner.Text())
+			for _, token := range tokens {
+				//convert token string to hex code
+				log.Println("Received:", token)
+				hexToken, err := hex.DecodeString(token)
+				must(err)
+				//send hex code to channel
+				log.Println("Sending to channel:", token)
+				channel <- Raw{
+					Time: time.Now(),
+					Data: hexToken,
+				}
+			}
+		}
+		if err := scanner.Err(); err != nil {
+			log.Println(err)
+		}
+		// when the scanner is done, quit the program
+		os.Exit(0)
+	}()
+
+	//send stdin to server
+	conn := dial(serverIP, serverPort, protocol)
+	defer conn.Close()
+	// prepare to encode raw
+	encoder := gob.NewEncoder(conn)
+	// read from the channel and send to server
+	log.Println("Listening to channel:")
+	for {
+		rawStruct := <-channel
+		log.Println("Got", rawStruct.Data, "from channel")
+		err := encoder.Encode(TCPMessage{Body: rawStruct}) // sends a Raw struct to the server
+		must(err)
+	}
+}
+
+func midiClient(midiPort int, serverIP string, serverPort int, protocol string) {
 
 	drv, err := driver.New()
 	must(err)
@@ -32,12 +99,7 @@ func client(midiPort int, serverIP string, serverPort int, protocol string) {
 
 	must(in.Open())
 
-	serverStr := fmt.Sprintf("%s:%d", serverIP, serverPort)
-	log.Println("Connecting to " + serverStr + "...")
-	conn, err := net.Dial(protocol, serverStr)
-	must(err)
-	log.Println("Connected to", serverStr)
-
+	conn := dial(serverIP, serverPort, protocol)
 	encoder := gob.NewEncoder(conn)
 
 	// listen for MIDI messages

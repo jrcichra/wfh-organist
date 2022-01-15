@@ -29,6 +29,8 @@ func midiTuxPrint(clr color.Attribute, addr net.Addr, t interface{}, ms int64) {
 		log.Printf("User: %s, Type: %s, Channel: %2d, Value: %3d, AbsValue: %4d, Delay: %4d ms\n", addr, "Pitchbend", m.Channel, m.Value, m.AbsValue, ms)
 	case PolyAftertouch:
 		log.Printf("User: %s, Type: %s, Channel: %2d, Key: %3d, Pressure: %2d, Delay: %4d ms\n", addr, "Poly Aftertouch", m.Channel, m.Key, m.Pressure, ms)
+	case Raw:
+		log.Printf("User: %s, Type: %s, Content: %s Delay: %4d ms\n", addr, "Raw", string(m.Data), ms)
 	default:
 		log.Printf("User: %s, Type: %s, Delay: %4d ms\n", addr, "Unknown", ms)
 	}
