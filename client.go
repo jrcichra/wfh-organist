@@ -25,13 +25,13 @@ func dial(serverIP string, serverPort int, protocol string) net.Conn {
 	return conn
 }
 
-func client(midiPort int, serverIP string, serverPort int, protocol string, stdinMode bool) {
+func client(midiPort int, serverIP string, serverPort int, protocol string, stdinMode bool, delay int) {
 
 	switch stdinMode {
 	case true:
 		stdinClient(serverIP, serverPort, protocol)
 	default:
-		midiClient(midiPort, serverIP, serverPort, protocol)
+		midiClient(midiPort, serverIP, serverPort, protocol, delay)
 	}
 }
 
@@ -92,7 +92,7 @@ func stdinClient(serverIP string, serverPort int, protocol string) {
 	}
 }
 
-func midiClient(midiPort int, serverIP string, serverPort int, protocol string) {
+func midiClient(midiPort int, serverIP string, serverPort int, protocol string, delay int) {
 
 	drv, err := driver.New()
 	must(err)
@@ -121,6 +121,9 @@ func midiClient(midiPort int, serverIP string, serverPort int, protocol string) 
 		reader.Each(func(pos *reader.Position, msg midi.Message) {
 			// send each message in a separate goroutine
 			go func() {
+				if delay > 0 {
+					time.Sleep(time.Duration(delay) * time.Millisecond)
+				}
 				// process messages differently based on type
 				// this is just so we can deal with a single known struct with exposed fields
 				switch v := msg.(type) {

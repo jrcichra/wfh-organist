@@ -18,11 +18,18 @@ func main() {
 	mode := flag.String("mode", "local", "client, server, or local (runs both)")
 	protocol := flag.String("protocol", "tcp", "tcp only (udp not implemented yet)")
 	stdinMode := flag.Bool("stdin", false, "read from stdin")
+	delay := flag.Int("delay", 0, "artificial delay in ms")
 	flag.Parse()
 
 	// make sure stdinMode is only true if mode is client
 	if *stdinMode && strings.ToLower(*mode) != "client" {
 		log.Println("stdin mode can only be used with client mode")
+		return
+	}
+
+	// delay only works on the client or local mode
+	if *delay > 0 && strings.ToLower(*mode) != "client" && strings.ToLower(*mode) != "local" {
+		log.Println("delay only works with client or local mode")
 		return
 	}
 
@@ -48,11 +55,11 @@ func main() {
 	case "server":
 		go server(*midiPort, *serverPort, *protocol)
 	case "client":
-		go client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode)
+		go client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay)
 	case "local":
 		// run both and sleep forever
 		go server(*midiPort, *serverPort, *protocol)
-		go client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode)
+		go client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay)
 	default:
 		log.Fatalf("Unknown mode: %s. Must be 'server' or 'client'\n", *mode)
 	}
