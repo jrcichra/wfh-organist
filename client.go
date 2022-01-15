@@ -47,11 +47,9 @@ func stdinClient(serverIP string, serverPort int, protocol string) {
 			tokens := strings.Fields(scanner.Text())
 			for _, token := range tokens {
 				//convert token string to hex code
-				log.Println("Received:", token)
 				hexToken, err := hex.DecodeString(token)
 				must(err)
 				//send hex code to channel
-				log.Println("Sending to channel:", token)
 				channel <- Raw{
 					Time: time.Now(),
 					Data: hexToken,
@@ -71,10 +69,8 @@ func stdinClient(serverIP string, serverPort int, protocol string) {
 	// prepare to encode raw
 	encoder := gob.NewEncoder(conn)
 	// read from the channel and send to server
-	log.Println("Listening to channel:")
 	for {
 		rawStruct := <-channel
-		log.Println("Got", rawStruct.Data, "from channel")
 		err := encoder.Encode(TCPMessage{Body: rawStruct}) // sends a Raw struct to the server
 		must(err)
 	}
