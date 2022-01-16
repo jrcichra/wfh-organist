@@ -75,6 +75,7 @@ func server(midiPort int, serverPort int, protocol string) {
 				err := dec.Decode(&t)
 				if err == io.EOF {
 					log.Println("Connection closed by client.")
+					c.Close()
 					return
 				}
 				must(err)

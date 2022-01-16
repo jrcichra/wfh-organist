@@ -4,6 +4,7 @@ go 1.17
 
 require (
 	github.com/fatih/color v1.13.0
+	github.com/gordonklaus/portaudio v0.0.0-20200911161147-bb74aa485641
 	github.com/prometheus/client_golang v1.11.0
 	gitlab.com/gomidi/midi v1.23.7
 	gitlab.com/gomidi/rtmididrv v0.14.0
