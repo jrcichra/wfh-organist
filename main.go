@@ -12,7 +12,7 @@ func main() {
 	// get args
 	serverIP := flag.String("server", "localhost", "server IP")
 	serverPort := flag.Int("port", 3131, "server port")
-	defaultMidiPort := 0 // flag does not print default value on 0 int
+	defaultMidiPort := 1 // flag does not print default value on 0 int
 	midiPort := flag.Int("midi", defaultMidiPort, "midi port (default "+strconv.Itoa(defaultMidiPort)+")")
 	list := flag.Bool("list", false, "list available ports")
 	mode := flag.String("mode", "local", "client, server, or local (runs both)")
