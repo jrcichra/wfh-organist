@@ -19,7 +19,7 @@ func main() {
 	protocol := flag.String("protocol", "tcp", "tcp only (udp not implemented yet)")
 	stdinMode := flag.Bool("stdin", false, "read from stdin")
 	delay := flag.Int("delay", 0, "artificial delay in ms")
-	audioEnabled := flag.Bool("audio", true, "enable audio")
+	audioDisabled := flag.Bool("noaudio", false, "disable audio")
 	audioSeverIP := flag.String("audio-server", "localhost", "audio server IP")
 	audioServerPort := flag.Int("audio-port", 3132, "audio server port")
 
@@ -58,12 +58,12 @@ func main() {
 	switch strings.ToLower(*mode) {
 	case "server":
 		go server(*midiPort, *serverPort, *protocol)
-		if *audioEnabled {
+		if !*audioDisabled {
 			go audioServer(*audioServerPort)
 		}
 	case "client":
 		go client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay)
-		if *audioEnabled {
+		if !*audioDisabled {
 			go audioClient(*audioSeverIP, *audioServerPort)
 		}
 	case "local":
