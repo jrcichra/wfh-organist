@@ -27,6 +27,7 @@ func audioServer(port int) {
 	// wait for someone to connect to the server
 	l, err := net.Listen("tcp", ":"+strconv.Itoa(port))
 	must(err)
+	log.Println("Listening for audio connection on port", port)
 	for {
 		conn, err := l.Accept()
 		log.Println("audio client connected")
