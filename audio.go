@@ -29,6 +29,7 @@ func audioServer(port int) {
 	must(err)
 	for {
 		conn, err := l.Accept()
+		log.Println("audio client connected")
 		go func() {
 			must(err)
 			portaudio.Initialize()
