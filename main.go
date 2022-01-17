@@ -20,7 +20,6 @@ func main() {
 	stdinMode := flag.Bool("stdin", false, "read from stdin")
 	delay := flag.Int("delay", 0, "artificial delay in ms")
 	audioDisabled := flag.Bool("noaudio", false, "disable audio")
-	audioSeverIP := flag.String("audio-server", "localhost", "audio server IP")
 	audioServerPort := flag.Int("audio-port", 3132, "audio server port")
 
 	flag.Parse()
@@ -64,7 +63,7 @@ func main() {
 	case "client":
 		go client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay)
 		if !*audioDisabled {
-			go audioClient(*audioSeverIP, *audioServerPort)
+			go audioClient(*serverIP, *audioServerPort)
 		}
 	case "local":
 		// run both and sleep forever
