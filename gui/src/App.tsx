@@ -110,10 +110,10 @@ function App() {
 
       <div className="col">
         <div>
-          <Video autoPlay playsInline srcObject={localStream} />
+          <Video id="localVideo" muted autoPlay playsInline srcObject={localStream} />
         </div>
         <div>
-          <Video autoPlay playsInline srcObject={remoteStream} />
+          <Video id="remoteVideo" autoPlay playsInline srcObject={remoteStream} />
         </div>
       </div>
 
