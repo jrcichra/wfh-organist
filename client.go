@@ -10,6 +10,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/fatih/color"
 	"gitlab.com/gomidi/midi"
 	"gitlab.com/gomidi/midi/midimessage/channel"
 	"gitlab.com/gomidi/midi/reader"
@@ -130,24 +131,28 @@ func midiClient(midiPort int, serverIP string, serverPort int, protocol string, 
 				case channel.NoteOn:
 					channel := csvCheckChannel(v.Channel(), csvRecords)
 					key := csvCheckOffset(v.Channel(), v.Key(), csvRecords)
+					m := NoteOn{
+						Time:     time.Now(),
+						Channel:  channel,
+						Key:      key,
+						Velocity: v.Velocity(),
+					}
+					midiTuxPrint(color.FgHiGreen, conn.RemoteAddr(), m, 0)
 					if channel != 255 {
-						err := encoder.Encode(TCPMessage{Body: NoteOn{
-							Time:     time.Now(),
-							Channel:  channel,
-							Key:      key,
-							Velocity: v.Velocity(),
-						}})
+						err := encoder.Encode(TCPMessage{Body: m})
 						must(err)
 					}
 				case channel.NoteOff:
 					channel := csvCheckChannel(v.Channel(), csvRecords)
 					key := csvCheckOffset(v.Channel(), v.Key(), csvRecords)
+					m := NoteOff{
+						Time:    time.Now(),
+						Channel: channel,
+						Key:     key,
+					}
+					midiTuxPrint(color.FgHiRed, conn.RemoteAddr(), m, 0)
 					if channel != 255 {
-						err := encoder.Encode(TCPMessage{Body: NoteOff{
-							Time:    time.Now(),
-							Channel: channel,
-							Key:     key,
-						}})
+						err := encoder.Encode(TCPMessage{Body: m})
 						must(err)
 					}
 				case channel.ProgramChange:
