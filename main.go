@@ -64,8 +64,10 @@ func main() {
 		// 	go audioClient(*serverIP, *audioServerPort)
 		// }
 	case "local":
-		// run both and sleep forever
-		go server(*midiPort, *serverPort, *protocol)
+		// run both (unless serverIP is set, and sleep forever
+		if *serverIP == "localhost" {
+			go server(*midiPort, *serverPort, *protocol)
+		}
 		go client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay)
 	default:
 		log.Fatalf("Unknown mode: %s. Must be 'server' or 'client'\n", *mode)
