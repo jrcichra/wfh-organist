@@ -17,7 +17,7 @@ jobs:
         with:
           go-version: 1.17
       - name: Install Dependencies
-        run: sudo apt-get update && sudo apt-get install -y libasound2-dev portaudio19-dev
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev
 
       - name: Build
         run: go build -v ./...
