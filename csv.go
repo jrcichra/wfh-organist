@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/csv"
+	"log"
 	"os"
 	"strconv"
 )
@@ -48,6 +49,9 @@ func csvCheckChannel(channel uint8, csvRecords []MidiCSVRecord) uint8 {
 		if msg.InputChannel == channel {
 			ret = msg.OutputChannel
 		}
+	}
+	if ret == 255 {
+		log.Println("I'm blackholing channel", channel)
 	}
 	return ret
 }
