@@ -2,6 +2,20 @@ package main
 
 import "time"
 
+type MidiCSVRecord struct {
+	InputChannel  uint8
+	OutputChannel uint8
+	Offset        int
+}
+
+// func (m *MidiMap) init() {
+// 	m.Maps = make(map[uint8]uint8)
+// }
+
+// func (m *MidiMap) add(input uint8, output uint8) {
+// 	m.Maps[input] = output
+// }
+
 type NoteOn struct {
 	Time     time.Time
 	Channel  uint8

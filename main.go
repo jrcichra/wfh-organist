@@ -51,6 +51,9 @@ func main() {
 	// register types to gob
 	registerGobTypes()
 
+	// read the csv
+	csvRecords := readCSV()
+
 	// operate in client or server mode
 	switch strings.ToLower(*mode) {
 	case "server":
@@ -59,7 +62,7 @@ func main() {
 		// 	go audioServer(*audioServerPort)
 		// }
 	case "client":
-		go client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay)
+		go client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay, csvRecords)
 		// if !*audioDisabled {
 		// 	go audioClient(*serverIP, *audioServerPort)
 		// }
@@ -68,7 +71,7 @@ func main() {
 		if *serverIP == "localhost" {
 			go server(*midiPort, *serverPort, *protocol)
 		}
-		go client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay)
+		go client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay, csvRecords)
 	default:
 		log.Fatalf("Unknown mode: %s. Must be 'server' or 'client'\n", *mode)
 	}

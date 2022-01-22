@@ -25,13 +25,13 @@ func dial(serverIP string, serverPort int, protocol string) net.Conn {
 	return conn
 }
 
-func client(midiPort int, serverIP string, serverPort int, protocol string, stdinMode bool, delay int) {
+func client(midiPort int, serverIP string, serverPort int, protocol string, stdinMode bool, delay int, csvRecords []MidiCSVRecord) {
 
 	switch stdinMode {
 	case true:
 		stdinClient(serverIP, serverPort, protocol)
 	default:
-		midiClient(midiPort, serverIP, serverPort, protocol, delay)
+		midiClient(midiPort, serverIP, serverPort, protocol, delay, csvRecords)
 	}
 }
 
@@ -92,7 +92,7 @@ func stdinClient(serverIP string, serverPort int, protocol string) {
 	}
 }
 
-func midiClient(midiPort int, serverIP string, serverPort int, protocol string, delay int) {
+func midiClient(midiPort int, serverIP string, serverPort int, protocol string, delay int, csvRecords []MidiCSVRecord) {
 
 	drv, err := driver.New()
 	must(err)
@@ -128,66 +128,95 @@ func midiClient(midiPort int, serverIP string, serverPort int, protocol string, 
 				// this is just so we can deal with a single known struct with exposed fields
 				switch v := msg.(type) {
 				case channel.NoteOn:
-					err := encoder.Encode(TCPMessage{Body: NoteOn{
-						Time:     time.Now(),
-						Channel:  v.Channel(),
-						Key:      v.Key(),
-						Velocity: v.Velocity(),
-					}})
-					must(err)
+					channel := csvCheckChannel(v.Channel(), csvRecords)
+					key := csvCheckOffset(v.Channel(), v.Key(), csvRecords)
+					if channel != 255 {
+						err := encoder.Encode(TCPMessage{Body: NoteOn{
+							Time:     time.Now(),
+							Channel:  channel,
+							Key:      key,
+							Velocity: v.Velocity(),
+						}})
+						must(err)
+					}
 				case channel.NoteOff:
-					err := encoder.Encode(TCPMessage{Body: NoteOff{
-						Time:    time.Now(),
-						Channel: v.Channel(),
-						Key:     v.Key(),
-					}})
-					must(err)
+					channel := csvCheckChannel(v.Channel(), csvRecords)
+					key := csvCheckOffset(v.Channel(), v.Key(), csvRecords)
+					if channel != 255 {
+						err := encoder.Encode(TCPMessage{Body: NoteOff{
+							Time:    time.Now(),
+							Channel: channel,
+							Key:     key,
+						}})
+						must(err)
+					}
 				case channel.ProgramChange:
-					err := encoder.Encode(TCPMessage{Body: ProgramChange{
-						Time:    time.Now(),
-						Channel: v.Channel(),
-						Program: v.Program(),
-					}})
-					must(err)
+					channel := csvCheckChannel(v.Channel(), csvRecords)
+					if channel != 255 {
+						err := encoder.Encode(TCPMessage{Body: ProgramChange{
+							Time:    time.Now(),
+							Channel: channel,
+							Program: v.Program(),
+						}})
+						must(err)
+					}
 				case channel.Aftertouch:
-					err := encoder.Encode(TCPMessage{Body: Aftertouch{
-						Time:     time.Now(),
-						Channel:  v.Channel(),
-						Pressure: v.Pressure(),
-					}})
-					must(err)
+					channel := csvCheckChannel(v.Channel(), csvRecords)
+					if channel != 255 {
+						err := encoder.Encode(TCPMessage{Body: Aftertouch{
+							Time:     time.Now(),
+							Channel:  channel,
+							Pressure: v.Pressure(),
+						}})
+						must(err)
+					}
+
 				case channel.ControlChange:
-					err := encoder.Encode(TCPMessage{Body: ControlChange{
-						Time:       time.Now(),
-						Channel:    v.Channel(),
-						Controller: v.Controller(),
-						Value:      v.Value(),
-					}})
-					must(err)
+					channel := csvCheckChannel(v.Channel(), csvRecords)
+					if channel != 255 {
+						err := encoder.Encode(TCPMessage{Body: ControlChange{
+							Time:       time.Now(),
+							Channel:    channel,
+							Controller: v.Controller(),
+							Value:      v.Value(),
+						}})
+						must(err)
+					}
 				case channel.NoteOffVelocity:
-					err := encoder.Encode(TCPMessage{Body: NoteOffVelocity{
-						Time:     time.Now(),
-						Channel:  v.Channel(),
-						Key:      v.Key(),
-						Velocity: v.Velocity(),
-					}})
-					must(err)
+					channel := csvCheckChannel(v.Channel(), csvRecords)
+					key := csvCheckOffset(v.Channel(), v.Key(), csvRecords)
+					if channel != 255 {
+						err := encoder.Encode(TCPMessage{Body: NoteOffVelocity{
+							Time:     time.Now(),
+							Channel:  channel,
+							Key:      key,
+							Velocity: v.Velocity(),
+						}})
+						must(err)
+					}
 				case channel.Pitchbend:
-					err := encoder.Encode(TCPMessage{Body: Pitchbend{
-						Time:     time.Now(),
-						Channel:  v.Channel(),
-						Value:    v.Value(),
-						AbsValue: v.AbsValue(),
-					}})
-					must(err)
+					channel := csvCheckChannel(v.Channel(), csvRecords)
+					if channel != 255 {
+						err := encoder.Encode(TCPMessage{Body: Pitchbend{
+							Time:     time.Now(),
+							Channel:  channel,
+							Value:    v.Value(),
+							AbsValue: v.AbsValue(),
+						}})
+						must(err)
+					}
 				case channel.PolyAftertouch:
-					err := encoder.Encode(TCPMessage{Body: PolyAftertouch{
-						Time:     time.Now(),
-						Channel:  v.Channel(),
-						Key:      v.Key(),
-						Pressure: v.Pressure(),
-					}})
-					must(err)
+					channel := csvCheckChannel(v.Channel(), csvRecords)
+					key := csvCheckOffset(v.Channel(), v.Key(), csvRecords)
+					if channel != 255 {
+						err := encoder.Encode(TCPMessage{Body: PolyAftertouch{
+							Time:     time.Now(),
+							Channel:  channel,
+							Key:      key,
+							Pressure: v.Pressure(),
+						}})
+						must(err)
+					}
 				default:
 					log.Println("Unknown message type:", v)
 				}
