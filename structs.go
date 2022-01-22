@@ -6,7 +6,6 @@ type MidiCSVRecord struct {
 	InputChannel  uint8
 	OutputChannel uint8
 	Offset        int
-	Sound         bool
 }
 
 // func (m *MidiMap) init() {

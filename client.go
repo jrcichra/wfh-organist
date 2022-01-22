@@ -128,9 +128,9 @@ func midiClient(midiPort int, serverIP string, serverPort int, protocol string, 
 				// this is just so we can deal with a single known struct with exposed fields
 				switch v := msg.(type) {
 				case channel.NoteOn:
-					channel, sound := csvCheckChannel(v.Channel(), csvRecords)
+					channel := csvCheckChannel(v.Channel(), csvRecords)
 					key := csvCheckOffset(v.Channel(), v.Key(), csvRecords)
-					if sound {
+					if channel != 255 {
 						err := encoder.Encode(TCPMessage{Body: NoteOn{
 							Time:     time.Now(),
 							Channel:  channel,
@@ -140,9 +140,9 @@ func midiClient(midiPort int, serverIP string, serverPort int, protocol string, 
 						must(err)
 					}
 				case channel.NoteOff:
-					channel, sound := csvCheckChannel(v.Channel(), csvRecords)
+					channel := csvCheckChannel(v.Channel(), csvRecords)
 					key := csvCheckOffset(v.Channel(), v.Key(), csvRecords)
-					if sound {
+					if channel != 255 {
 						err := encoder.Encode(TCPMessage{Body: NoteOff{
 							Time:    time.Now(),
 							Channel: channel,
@@ -151,8 +151,8 @@ func midiClient(midiPort int, serverIP string, serverPort int, protocol string, 
 						must(err)
 					}
 				case channel.ProgramChange:
-					channel, sound := csvCheckChannel(v.Channel(), csvRecords)
-					if sound {
+					channel := csvCheckChannel(v.Channel(), csvRecords)
+					if channel != 255 {
 						err := encoder.Encode(TCPMessage{Body: ProgramChange{
 							Time:    time.Now(),
 							Channel: channel,
@@ -161,8 +161,8 @@ func midiClient(midiPort int, serverIP string, serverPort int, protocol string, 
 						must(err)
 					}
 				case channel.Aftertouch:
-					channel, sound := csvCheckChannel(v.Channel(), csvRecords)
-					if sound {
+					channel := csvCheckChannel(v.Channel(), csvRecords)
+					if channel != 255 {
 						err := encoder.Encode(TCPMessage{Body: Aftertouch{
 							Time:     time.Now(),
 							Channel:  channel,
@@ -172,8 +172,8 @@ func midiClient(midiPort int, serverIP string, serverPort int, protocol string, 
 					}
 
 				case channel.ControlChange:
-					channel, sound := csvCheckChannel(v.Channel(), csvRecords)
-					if sound {
+					channel := csvCheckChannel(v.Channel(), csvRecords)
+					if channel != 255 {
 						err := encoder.Encode(TCPMessage{Body: ControlChange{
 							Time:       time.Now(),
 							Channel:    channel,
@@ -183,9 +183,9 @@ func midiClient(midiPort int, serverIP string, serverPort int, protocol string, 
 						must(err)
 					}
 				case channel.NoteOffVelocity:
-					channel, sound := csvCheckChannel(v.Channel(), csvRecords)
+					channel := csvCheckChannel(v.Channel(), csvRecords)
 					key := csvCheckOffset(v.Channel(), v.Key(), csvRecords)
-					if sound {
+					if channel != 255 {
 						err := encoder.Encode(TCPMessage{Body: NoteOffVelocity{
 							Time:     time.Now(),
 							Channel:  channel,
@@ -195,8 +195,8 @@ func midiClient(midiPort int, serverIP string, serverPort int, protocol string, 
 						must(err)
 					}
 				case channel.Pitchbend:
-					channel, sound := csvCheckChannel(v.Channel(), csvRecords)
-					if sound {
+					channel := csvCheckChannel(v.Channel(), csvRecords)
+					if channel != 255 {
 						err := encoder.Encode(TCPMessage{Body: Pitchbend{
 							Time:     time.Now(),
 							Channel:  channel,
@@ -206,9 +206,9 @@ func midiClient(midiPort int, serverIP string, serverPort int, protocol string, 
 						must(err)
 					}
 				case channel.PolyAftertouch:
-					channel, sound := csvCheckChannel(v.Channel(), csvRecords)
+					channel := csvCheckChannel(v.Channel(), csvRecords)
 					key := csvCheckOffset(v.Channel(), v.Key(), csvRecords)
-					if sound {
+					if channel != 255 {
 						err := encoder.Encode(TCPMessage{Body: PolyAftertouch{
 							Time:     time.Now(),
 							Channel:  channel,
