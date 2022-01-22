@@ -85,38 +85,38 @@ func server(midiPort int, serverPort int, protocol string) {
 				case NoteOn:
 					ms := handleMs(m.Time)
 					cont(writer.NoteOn(writers[m.Channel], m.Key, m.Velocity))
-					midiTuxPrint(color.FgHiGreen, c.RemoteAddr(), m, ms)
+					midiTuxServerPrint(color.FgHiGreen, c.RemoteAddr(), m, ms)
 				case NoteOff:
 					ms := handleMs(m.Time)
 					cont(writer.NoteOff(writers[m.Channel], m.Key))
-					midiTuxPrint(color.FgHiRed, c.RemoteAddr(), m, ms)
+					midiTuxServerPrint(color.FgHiRed, c.RemoteAddr(), m, ms)
 				case ProgramChange:
 					ms := handleMs(m.Time)
 					cont(writer.ProgramChange(writers[m.Channel], m.Program))
-					midiTuxPrint(color.FgHiYellow, c.RemoteAddr(), m, ms)
+					midiTuxServerPrint(color.FgHiYellow, c.RemoteAddr(), m, ms)
 				case Aftertouch:
 					ms := handleMs(m.Time)
 					cont(writer.Aftertouch(writers[m.Channel], m.Pressure))
-					midiTuxPrint(color.FgHiBlue, c.RemoteAddr(), m, ms)
+					midiTuxServerPrint(color.FgHiBlue, c.RemoteAddr(), m, ms)
 				case ControlChange:
 					ms := handleMs(m.Time)
 					cont(writer.ControlChange(writers[m.Channel], m.Controller, m.Value))
-					midiTuxPrint(color.FgHiMagenta, c.RemoteAddr(), m, ms)
+					midiTuxServerPrint(color.FgHiMagenta, c.RemoteAddr(), m, ms)
 				case NoteOffVelocity:
 					ms := handleMs(m.Time)
 					cont(writer.NoteOffVelocity(writers[m.Channel], m.Key, m.Velocity))
-					midiTuxPrint(color.FgHiYellow, c.RemoteAddr(), m, ms)
+					midiTuxServerPrint(color.FgHiYellow, c.RemoteAddr(), m, ms)
 				case Pitchbend:
 					ms := handleMs(m.Time)
 					cont(writer.Pitchbend(writers[m.Channel], m.Value))
-					midiTuxPrint(color.FgMagenta, c.RemoteAddr(), m, ms)
+					midiTuxServerPrint(color.FgMagenta, c.RemoteAddr(), m, ms)
 				case PolyAftertouch:
 					ms := handleMs(m.Time)
 					cont(writer.PolyAftertouch(writers[m.Channel], m.Key, m.Pressure))
-					midiTuxPrint(color.FgCyan, c.RemoteAddr(), m, ms)
+					midiTuxServerPrint(color.FgCyan, c.RemoteAddr(), m, ms)
 				case Raw:
 					ms := handleMs(m.Time)
-					midiTuxPrint(color.FgBlue, c.RemoteAddr(), m, ms)
+					midiTuxServerPrint(color.FgBlue, c.RemoteAddr(), m, ms)
 					// write the raw bytes to the MIDI device
 					_, err := out.Write(m.Data)
 					cont(err)

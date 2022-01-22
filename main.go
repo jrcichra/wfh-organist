@@ -58,14 +58,8 @@ func main() {
 	switch strings.ToLower(*mode) {
 	case "server":
 		go server(*midiPort, *serverPort, *protocol)
-		// if !*audioDisabled {
-		// 	go audioServer(*audioServerPort)
-		// }
 	case "client":
 		go client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay, csvRecords)
-		// if !*audioDisabled {
-		// 	go audioClient(*serverIP, *audioServerPort)
-		// }
 	case "local":
 		// run both (unless serverIP is set, and sleep forever
 		if *serverIP == "localhost" {

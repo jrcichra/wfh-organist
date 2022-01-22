@@ -131,32 +131,31 @@ func midiClient(midiPort int, serverIP string, serverPort int, protocol string, 
 				case channel.NoteOn:
 					channel := csvCheckChannel(v.Channel(), csvRecords)
 					key := csvCheckOffset(v.Channel(), v.Key(), csvRecords)
-					m := NoteOn{
-						Time:     time.Now(),
-						Channel:  channel,
-						Key:      key,
-						Velocity: v.Velocity(),
-					}
-					midiTuxPrint(color.FgHiGreen, conn.RemoteAddr(), m, 0)
+					midiTuxClientPrint(color.FgHiGreen, v, channel, key)
 					if channel != 255 {
-						err := encoder.Encode(TCPMessage{Body: m})
+						err := encoder.Encode(TCPMessage{Body: NoteOn{
+							Time:     time.Now(),
+							Channel:  channel,
+							Key:      key,
+							Velocity: v.Velocity(),
+						}})
 						must(err)
 					}
 				case channel.NoteOff:
 					channel := csvCheckChannel(v.Channel(), csvRecords)
 					key := csvCheckOffset(v.Channel(), v.Key(), csvRecords)
-					m := NoteOff{
-						Time:    time.Now(),
-						Channel: channel,
-						Key:     key,
-					}
-					midiTuxPrint(color.FgHiRed, conn.RemoteAddr(), m, 0)
+					midiTuxClientPrint(color.FgHiRed, v, channel, key)
 					if channel != 255 {
-						err := encoder.Encode(TCPMessage{Body: m})
+						err := encoder.Encode(TCPMessage{Body: NoteOff{
+							Time:    time.Now(),
+							Channel: channel,
+							Key:     key,
+						}})
 						must(err)
 					}
 				case channel.ProgramChange:
 					channel := csvCheckChannel(v.Channel(), csvRecords)
+					midiTuxClientPrint(color.FgHiYellow, v, channel, 255)
 					if channel != 255 {
 						err := encoder.Encode(TCPMessage{Body: ProgramChange{
 							Time:    time.Now(),
@@ -167,6 +166,7 @@ func midiClient(midiPort int, serverIP string, serverPort int, protocol string, 
 					}
 				case channel.Aftertouch:
 					channel := csvCheckChannel(v.Channel(), csvRecords)
+					midiTuxClientPrint(color.FgHiBlue, v, channel, 255)
 					if channel != 255 {
 						err := encoder.Encode(TCPMessage{Body: Aftertouch{
 							Time:     time.Now(),
@@ -178,6 +178,7 @@ func midiClient(midiPort int, serverIP string, serverPort int, protocol string, 
 
 				case channel.ControlChange:
 					channel := csvCheckChannel(v.Channel(), csvRecords)
+					midiTuxClientPrint(color.FgHiMagenta, v, channel, 255)
 					if channel != 255 {
 						err := encoder.Encode(TCPMessage{Body: ControlChange{
 							Time:       time.Now(),
@@ -190,6 +191,7 @@ func midiClient(midiPort int, serverIP string, serverPort int, protocol string, 
 				case channel.NoteOffVelocity:
 					channel := csvCheckChannel(v.Channel(), csvRecords)
 					key := csvCheckOffset(v.Channel(), v.Key(), csvRecords)
+					midiTuxClientPrint(color.FgHiYellow, v, channel, key)
 					if channel != 255 {
 						err := encoder.Encode(TCPMessage{Body: NoteOffVelocity{
 							Time:     time.Now(),
@@ -201,6 +203,7 @@ func midiClient(midiPort int, serverIP string, serverPort int, protocol string, 
 					}
 				case channel.Pitchbend:
 					channel := csvCheckChannel(v.Channel(), csvRecords)
+					midiTuxClientPrint(color.FgMagenta, v, channel, 255)
 					if channel != 255 {
 						err := encoder.Encode(TCPMessage{Body: Pitchbend{
 							Time:     time.Now(),
@@ -213,6 +216,7 @@ func midiClient(midiPort int, serverIP string, serverPort int, protocol string, 
 				case channel.PolyAftertouch:
 					channel := csvCheckChannel(v.Channel(), csvRecords)
 					key := csvCheckOffset(v.Channel(), v.Key(), csvRecords)
+					midiTuxClientPrint(color.FgCyan, v, channel, key)
 					if channel != 255 {
 						err := encoder.Encode(TCPMessage{Body: PolyAftertouch{
 							Time:     time.Now(),
