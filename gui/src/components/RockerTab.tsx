@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import './RockerTab.css';
 
-function RockerTab({ text }: { text: string }) {
+function RockerTab({ text, on, off }: { text: string, on?: string, off?: string }) {
 
     const [pressed, setPressed]: [boolean, any] = useState(false);
 

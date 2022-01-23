@@ -86,56 +86,57 @@ function Home() {
       </div> */}
       <p className="title">Swell Organ</p>
       <div className="col">
-        <RockerTab text="Bourdon 16'" />
-        <RockerTab text="Gedackt 8'" />
-        <RockerTab text="Viola 8'" />
-        <RockerTab text="Viola Celeste 8'" />
-        <RockerTab text="Spitz prinzipal 4'" />
-        <RockerTab text="Koppel flote 4'" />
-        <RockerTab text="Nasat 2-2/3'" />
-        <RockerTab text="Blockflote 2'" />
-        <RockerTab text="Basson 16'" />
-        <RockerTab text="Trompette 8'" />
-        <RockerTab text="Tremulant" />
-        <RockerTab text="MIDI to Swell" />
+        <RockerTab text="Bourdon 16'" on="b0 63 00 b0 62 0b b0 06 7f" off="b0 63 00 b0 62 0b b0 06 00" />
+        <RockerTab text="Gedackt 8'" on="b0 63 00 b0 62 28 b0 06 7f" off="b0 63 00 b0 62 28 b0 06 00" />
+        <RockerTab text="Viola 8'" on="b0 63 00 b0 62 22 b0 06 7f" off="b0 63 00 b0 62 22 b0 06 00" />
+        <RockerTab text="Viola Celeste 8'" on="b0 63 00 b0 62 23 b0 06 7f" off="b0 63 00 b0 62 23 b0 06 00" />
+        <RockerTab text="Spitz prinzipal 4'" on="b0 63 00 b0 62 38 b0 06 7f" off="b0 63 00 b0 62 38 b0 06 00" />
+        <RockerTab text="Koppel flote 4'" on="b0 63 00 b0 62 3f b0 06 7f" off="b0 63 00 b0 62 3f b0 06 00" />
+        <RockerTab text="Nasat 2-2/3'" on="b0 63 00 b0 62 4c b0 06 7f" off="b0 63 00 b0 62 4c b0 06 00" />
+        <RockerTab text="Blockflote 2'" on="b0 63 00 b0 62 54 b0 06 7f" off="b0 63 00 b0 62 54 b0 06 00" />
+        <RockerTab text="Basson 16'" on="b0 63 00 b0 62 72 b0 06 7f" off="b0 63 00 b0 62 72 b0 06 00" />
+        <RockerTab text="Trompette 8'" on="b0 63 01 b0 62 00 b0 06 7f" off="b0 63 01 b0 62 00 b0 06 00" />
+        <RockerTab text="Tremulant" on="b0 63 01 b0 62 30 b0 06 7f" off="b0 63 01 b0 62 30 b0 06 00" />
+        <RockerTab text="MIDI to Swell" on="b0 63 01 b0 62 5e b0 06 7f" off="b0 63 01 b0 62 5e b0 06 00" />
       </div>
       <p className="title">Great Organ</p>
       <div className="col">
-        <RockerTab text="Principal 8'" />
-        <RockerTab text="Gedackt 8'" />
-        <RockerTab text="Koppel flote 4'" />
-        <RockerTab text="Super Octave 2'" />
-        <RockerTab text="Mixture IV" />
-        <RockerTab text="Chimes" />
-        <RockerTab text="Tremulant" />
-        <RockerTab text="Swell to Great" />
-        <RockerTab text="MIDI to Great" />
+        <RockerTab text="Principal 8'" on="b1 63 00 b1 62 1f b1 06 7f" off="b1 63 00 b1 62 1f b1 06 00" />
+        <RockerTab text="Gedackt 8'" on="b1 63 00 b1 62 28 b1 06 7f" off="b1 63 00 b1 62 28 b1 06 00" />
+        <RockerTab text="Octave 4'" on="b1 63 00 b1 62 38 b1 06 7f" off="b1 63 00 b1 62 38 b1 06 00" />
+        <RockerTab text="Koppel flote 4'" on="b1 63 00 b1 62 3f b1 06 7f" off="b1 63 00 b1 62 3f b1 06 00" />
+        <RockerTab text="Super Octave 2'" on="b1 63 00 b1 62 50 b1 06 7f" off="b1 63 00 b1 62 50 b1 06 00" />
+        <RockerTab text="Mixture IV" on="b1 63 00 b1 62 64 b1 06 7f" off="b1 63 00 b1 62 64 b1 06 00" />
+        <RockerTab text="Chimes" on="b1 63 01 b1 62 21 b1 06 7f" off="b1 63 01 b1 62 21 b1 06 00" />
+        <RockerTab text="Tremulant" on="b1 63 01 b1 62 30 b1 06 7f" off="b1 63 01 b1 62 30 b1 06 00" />
+        <RockerTab text="Swell to Great" on="b1 63 01 b1 62 77 b1 06 7f" off="b1 63 01 b1 62 77 b1 06 00" />
+        <RockerTab text="MIDI to Great" on="b1 63 01 b1 62 5f b1 06 7f" off="b1 63 01 b1 62 5f b1 06 00" />
       </div>
       <p className="title">Pedal Organ</p>
       <div className="col">
-        <RockerTab text="Bourdon 16'" />
-        <RockerTab text="Lieb lich gedackt 16'" />
-        <RockerTab text="Octave 8'" />
-        <RockerTab text="Gedackt 8'" />
-        <RockerTab text="Choral bass 4'" />
-        <RockerTab text="Mixture II" />
-        <RockerTab text="Basson 16'" />
-        <RockerTab text="Trompette 8'" />
-        <RockerTab text="Great to Pedal" />
-        <RockerTab text="Swell to Pedal" />
-        <RockerTab text="MIDI to Pedal" />
+        <RockerTab text="Bourdon 16'" on="b2 63 00 b2 62 0c b2 06 7f" off="b2 63 00 b2 62 0c b2 06 00" />
+        <RockerTab text="Lieb lich gedackt 16'" on="b2 63 00 b2 62 0f b2 06 7f" off="b2 63 00 b2 62 0f b2 06 00" />
+        <RockerTab text="Octave 8'" on="b2 63 00 b2 62 1f b2 06 7f" off="b2 63 00 b2 62 1f b2 06 00" />
+        <RockerTab text="Gedackt 8'" on="b2 63 00 b2 62 28 b2 06 7f" off="b2 63 00 b2 62 28 b2 06 00" />
+        <RockerTab text="Choral bass 4'" on="b2 63 00 b2 62 38 b2 06 7f" off="b2 63 00 b2 62 38 b2 06 00" />
+        <RockerTab text="Mixture II" on="b2 63 00 b2 62 64 b2 06 7f" off="b2 63 00 b2 62 64 b2 06 00" />
+        <RockerTab text="Basson 16'" on="b2 63 00 b2 62 72 b2 06 7f" off="b2 63 00 b2 62 72 b2 06 00" />
+        <RockerTab text="Trompette 8'" on="b2 63 01 b2 62 00 b2 06 7f" off="b2 63 01 b2 62 00 b2 06 00" />
+        <RockerTab text="Great to Pedal" on="b2 63 01 b2 62 78 b2 06 7f" off="b2 63 01 b2 62 78 b2 06 00" />
+        <RockerTab text="Swell to Pedal" on="b2 63 01 b2 62 77 b2 06 7f" off="b2 63 01 b2 62 77 b2 06 00" />
+        <RockerTab text="MIDI to Pedal" on="b2 63 01 b2 62 60 b2 06 7f" off="b2 63 01 b2 62 60 b2 06 00" />
       </div>
       <p className="title">General</p>
       <div className="col">
-        <RockerTab text="Memory B" />
-        <RockerTab text="Add Stops" />
-        <RockerTab text="Bass Coupler" />
-        <RockerTab text="Melody Coupler" />
-        <RockerTab text="Romantic Tuning Off" />
-        <RockerTab text="Reverb" />
-        <RockerTab text="." />
-        <RockerTab text="Console Speakers Off" />
-        <RockerTab text="External Speakers Off" />
+        <RockerTab text="Memory B" on="N/A" off="N/A" />
+        <RockerTab text="Add Stops" on="N/A" off="N/A" />
+        <RockerTab text="Bass Coupler" on="b7 63 01 b7 62 44 b7 06 7f" off="b7 63 01 b7 62 44 b7 06 00" />
+        <RockerTab text="Melody Coupler" on="b7 63 01 b7 62 45 b7 06 7f" off="b7 63 01 b7 62 45 b7 06 00" />
+        <RockerTab text="Romantic Tuning Off" on="b7 63 01 b7 62 65 b7 06 7f" off="b7 63 01 b7 62 65 b7 06 00" />
+        <RockerTab text="Reverb" on="N/A" off="N/A" />
+        <RockerTab text="." on="b7 63 01 b7 62 31 b7 06 7f" off="b7 63 01 b7 62 31 b7 06 00" />
+        <RockerTab text="Console Speakers Off" on="b7 63 01 b7 62 69 b7 06 7f" off="b7 63 01 b7 62 69 b7 06 00" />
+        <RockerTab text="External Speakers Off" on="b7 63 01 b7 62 74 b7 06 7f" off="b7 63 01 b7 62 74 b7 06 00" />
       </div>
       <p className="title">General Pistons</p>
       <div className="col">
