@@ -1,0 +1,36 @@
+.button {
+    padding: 3.4rem 0rem;
+    width: 3.5rem;
+    height: 3.4rem;
+    font-size: .7rem;
+    text-align: center;
+    cursor: pointer;
+    outline: solid;
+    color: #000000;
+    background-color: #ffffff;
+    border: none;
+    border-radius: 1rem;
+    box-shadow: 0 .6rem rgb(129, 129, 129);
+    margin: -.3rem .3rem;
+  }
+  
+.button:hover {background-color: #fafafa}
+
+.buttonActive {
+    padding: 3.4rem 0rem;
+    width: 3.5rem;
+    height: 3.4rem;
+    font-size: .7rem;
+    text-align: center;
+    cursor: pointer;
+    outline: solid;
+    color: #000000;
+    border: none;
+    border-radius: 1rem;
+    margin: -.3rem .3rem;
+    
+    background-color: #f0f0f0;
+    box-shadow: 0 0px rgb(129, 129, 129);
+    transform: translateY(4px);
+
+}

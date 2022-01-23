@@ -1,0 +1,9 @@
+.display {
+    padding: .5rem 1rem;
+    font-size: 2rem;
+    font-family: monospace;
+    font-weight: bold;
+    color: rgb(255, 246, 162);
+    background-color: rgb(100, 0, 0);
+    border-radius: 2rem;
+}
