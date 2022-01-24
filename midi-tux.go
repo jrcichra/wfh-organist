@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"net"
 
 	"github.com/fatih/color"
 )
@@ -10,29 +9,29 @@ import (
 // Midi Tux prints colorful messages to the console
 // Inspired by http://www.midiox.com/
 
-func midiTuxServerPrint(clr color.Attribute, addr net.Addr, t interface{}, ms int64) {
+func midiTuxServerPrint(clr color.Attribute, t interface{}, ms int64) {
 	color.Set(clr)
 	switch m := t.(type) {
 	case NoteOn:
-		log.Printf("User: %s, Type: %s, Channel: %2d, Key: %3d, Velocity: %2d,\n", addr, "Note On", m.Channel, m.Key, m.Velocity)
+		log.Printf("Type: %s, Channel: %2d, Key: %3d, Velocity: %2d,\n", "Note On", m.Channel, m.Key, m.Velocity)
 	case NoteOff:
-		log.Printf("User: %s, Type: %s, Channel: %2d, Key: %3d, Velocity: %2d,\n", addr, "Note Off", m.Channel, m.Key, 0)
+		log.Printf("Type: %s, Channel: %2d, Key: %3d, Velocity: %2d,\n", "Note Off", m.Channel, m.Key, 0)
 	case ProgramChange:
-		log.Printf("User: %s, Type: %s, Channel: %2d, Program: %2d,\n", addr, "Program Change", m.Channel, m.Program)
+		log.Printf("Type: %s, Channel: %2d, Program: %2d,\n", "Program Change", m.Channel, m.Program)
 	case Aftertouch:
-		log.Printf("User: %s, Type: %s, Channel: %2d, Pressure: %2d,\n", addr, "Aftertouch", m.Channel, m.Pressure)
+		log.Printf("Type: %s, Channel: %2d, Pressure: %2d,\n", "Aftertouch", m.Channel, m.Pressure)
 	case ControlChange:
-		log.Printf("User: %s, Type: %s, Channel: %2d, Controller: %2d, Value: %2d,\n", addr, "Control Change", m.Channel, m.Controller, m.Value)
+		log.Printf("Type: %s, Channel: %2d, Controller: %2d, Value: %2d,\n", "Control Change", m.Channel, m.Controller, m.Value)
 	case NoteOffVelocity:
-		log.Printf("User: %s, Type: %s, Channel: %2d, Key: %3d, Velocity: %2d,\n", addr, "Note Off Velocity", m.Channel, m.Key, m.Velocity)
+		log.Printf("Type: %s, Channel: %2d, Key: %3d, Velocity: %2d,\n", "Note Off Velocity", m.Channel, m.Key, m.Velocity)
 	case Pitchbend:
-		log.Printf("User: %s, Type: %s, Channel: %2d, Value: %3d, AbsValue: %4d,\n", addr, "Pitchbend", m.Channel, m.Value, m.AbsValue)
+		log.Printf("Type: %s, Channel: %2d, Value: %3d, AbsValue: %4d,\n", "Pitchbend", m.Channel, m.Value, m.AbsValue)
 	case PolyAftertouch:
-		log.Printf("User: %s, Type: %s, Channel: %2d, Key: %3d, Pressure: %2d,\n", addr, "Poly Aftertouch", m.Channel, m.Key, m.Pressure)
+		log.Printf("Type: %s, Channel: %2d, Key: %3d, Pressure: %2d,\n", "Poly Aftertouch", m.Channel, m.Key, m.Pressure)
 	case Raw:
-		log.Printf("User: %s, Type: %s, Content: %x\n", addr, "Raw", m.Data)
+		log.Printf("Type: %s, Content: %x\n", "Raw", m.Data)
 	default:
-		log.Printf("User: %s, Type: %s,\n", addr, "Unknown")
+		log.Printf("Type: %s,\n", "Unknown")
 	}
 	color.Unset()
 }

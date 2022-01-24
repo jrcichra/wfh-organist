@@ -128,12 +128,12 @@ function Home() {
       </div>
       <p className="title">General</p>
       <div className="col">
-        <RockerTab text="Memory B" on="N/A" off="N/A" />
-        <RockerTab text="Add Stops" on="N/A" off="N/A" />
+        <RockerTab text="Memory B" />
+        <RockerTab text="Add Stops" />
         <RockerTab text="Bass Coupler" on="b7 63 01 b7 62 44 b7 06 7f" off="b7 63 01 b7 62 44 b7 06 00" />
         <RockerTab text="Melody Coupler" on="b7 63 01 b7 62 45 b7 06 7f" off="b7 63 01 b7 62 45 b7 06 00" />
         <RockerTab text="Romantic Tuning Off" on="b7 63 01 b7 62 65 b7 06 7f" off="b7 63 01 b7 62 65 b7 06 00" />
-        <RockerTab text="Reverb" on="N/A" off="N/A" />
+        <RockerTab text="Reverb" />
         <RockerTab text="." on="b7 63 01 b7 62 31 b7 06 7f" off="b7 63 01 b7 62 31 b7 06 00" />
         <RockerTab text="Console Speakers Off" on="b7 63 01 b7 62 69 b7 06 7f" off="b7 63 01 b7 62 69 b7 06 00" />
         <RockerTab text="External Speakers Off" on="b7 63 01 b7 62 74 b7 06 7f" off="b7 63 01 b7 62 74 b7 06 00" />

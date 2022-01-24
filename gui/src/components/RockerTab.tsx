@@ -8,11 +8,33 @@ function RockerTab({ text, on, off }: { text: string, on?: string, off?: string 
     const [className, setClassName]: [string, any] = useState('button');
 
     useEffect(() => {
-        if (pressed) {
-            setClassName('buttonActive');
-        } else {
-            setClassName('button');
-        }
+        (async () => {
+            if (pressed) {
+                if (on !== undefined) {
+                    setClassName('buttonActive');
+                    // fetch post
+                    fetch('/api/midi/raw', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'text/plain'
+                        },
+                        body: on,
+                    });
+                }
+            } else {
+                if (off !== undefined) {
+                    setClassName('button');
+                    // fetch post
+                    fetch('/api/midi/raw', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'text/plain'
+                        },
+                        body: off,
+                    });
+                }
+            }
+        })()
     }, [pressed]);
 
     return (
