@@ -55,17 +55,19 @@ func server(midiPort int, serverPort int, protocol string) {
 		log.Println("Ready to play music!")
 
 		go func() {
-			dec := gob.NewDecoder(c)
-			var t TCPMessage
-			err := dec.Decode(&t)
-			if err == io.EOF {
-				log.Println("Connection closed by client.")
-				c.Close()
-				return
+			for {
+				dec := gob.NewDecoder(c)
+				var t TCPMessage
+				err := dec.Decode(&t)
+				if err == io.EOF {
+					log.Println("Connection closed by client.")
+					c.Close()
+					return
+				}
+				must(err)
+				// send through the channel
+				notesChan <- t.Body
 			}
-			must(err)
-			// send through the channel
-			notesChan <- t.Body
 		}()
 	}
 }
