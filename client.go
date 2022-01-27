@@ -28,14 +28,18 @@ func dial(serverIP string, serverPort int, protocol string) net.Conn {
 
 func client(midiPort int, serverIP string, serverPort int, protocol string, stdinMode bool, delay int, csvRecords []MidiCSVRecord) {
 
+	notesChan := make(chan interface{})
+
 	// in either mode read the serial for now
-	go readSerial()
+	go readSerial(notesChan)
+	// ability to send notes
+	go sendNotesClient(serverIP, serverPort, protocol, delay, notesChan, csvRecords)
 
 	switch stdinMode {
 	case true:
 		stdinClient(serverIP, serverPort, protocol)
 	default:
-		midiClient(midiPort, serverIP, serverPort, protocol, delay, csvRecords)
+		midiClient(midiPort, delay, csvRecords, notesChan)
 	}
 }
 
@@ -96,7 +100,132 @@ func stdinClient(serverIP string, serverPort int, protocol string) {
 	}
 }
 
-func midiClient(midiPort int, serverIP string, serverPort int, protocol string, delay int, csvRecords []MidiCSVRecord) {
+func sendNotesClient(serverIP string, serverPort int, protocol string, delay int, notesChan chan interface{}, csvRecords []MidiCSVRecord) {
+
+	conn := dial(serverIP, serverPort, protocol)
+	encoder := gob.NewEncoder(conn)
+
+	for {
+		msg := <-notesChan
+		go func() {
+			if delay > 0 {
+				time.Sleep(time.Duration(delay) * time.Millisecond)
+			}
+			// process messages differently based on type
+			// this is just so we can deal with a single known struct with exposed fields
+			switch v := msg.(type) {
+			case channel.NoteOn:
+				channel := csvCheckChannel(v.Channel(), csvRecords)
+				key := csvCheckOffset(v.Channel(), v.Key(), csvRecords)
+				midiTuxClientPrint(color.FgHiGreen, v, channel, key)
+				if channel != 255 {
+					err := encoder.Encode(TCPMessage{Body: NoteOn{
+						Time:     time.Now(),
+						Channel:  channel,
+						Key:      key,
+						Velocity: v.Velocity(),
+					}})
+					must(err)
+				}
+			case channel.NoteOff:
+				channel := csvCheckChannel(v.Channel(), csvRecords)
+				key := csvCheckOffset(v.Channel(), v.Key(), csvRecords)
+				midiTuxClientPrint(color.FgHiRed, v, channel, key)
+				if channel != 255 {
+					err := encoder.Encode(TCPMessage{Body: NoteOff{
+						Time:    time.Now(),
+						Channel: channel,
+						Key:     key,
+					}})
+					must(err)
+				}
+			case channel.ProgramChange:
+				channel := csvCheckChannel(v.Channel(), csvRecords)
+				midiTuxClientPrint(color.FgHiYellow, v, channel, 255)
+				if channel != 255 {
+					err := encoder.Encode(TCPMessage{Body: ProgramChange{
+						Time:    time.Now(),
+						Channel: channel,
+						Program: v.Program(),
+					}})
+					must(err)
+				}
+			case channel.Aftertouch:
+				channel := csvCheckChannel(v.Channel(), csvRecords)
+				midiTuxClientPrint(color.FgHiBlue, v, channel, 255)
+				if channel != 255 {
+					err := encoder.Encode(TCPMessage{Body: Aftertouch{
+						Time:     time.Now(),
+						Channel:  channel,
+						Pressure: v.Pressure(),
+					}})
+					must(err)
+				}
+
+			case channel.ControlChange:
+				channel := csvCheckChannel(v.Channel(), csvRecords)
+				midiTuxClientPrint(color.FgHiMagenta, v, channel, 255)
+				if channel != 255 {
+					err := encoder.Encode(TCPMessage{Body: ControlChange{
+						Time:       time.Now(),
+						Channel:    channel,
+						Controller: v.Controller(),
+						Value:      v.Value(),
+					}})
+					must(err)
+				}
+			case channel.NoteOffVelocity:
+				channel := csvCheckChannel(v.Channel(), csvRecords)
+				key := csvCheckOffset(v.Channel(), v.Key(), csvRecords)
+				midiTuxClientPrint(color.FgHiYellow, v, channel, key)
+				if channel != 255 {
+					err := encoder.Encode(TCPMessage{Body: NoteOffVelocity{
+						Time:     time.Now(),
+						Channel:  channel,
+						Key:      key,
+						Velocity: v.Velocity(),
+					}})
+					must(err)
+				}
+			case channel.Pitchbend:
+				channel := csvCheckChannel(v.Channel(), csvRecords)
+				midiTuxClientPrint(color.FgMagenta, v, channel, 255)
+				if channel != 255 {
+					err := encoder.Encode(TCPMessage{Body: Pitchbend{
+						Time:     time.Now(),
+						Channel:  channel,
+						Value:    v.Value(),
+						AbsValue: v.AbsValue(),
+					}})
+					must(err)
+				}
+			case channel.PolyAftertouch:
+				channel := csvCheckChannel(v.Channel(), csvRecords)
+				key := csvCheckOffset(v.Channel(), v.Key(), csvRecords)
+				midiTuxClientPrint(color.FgCyan, v, channel, key)
+				if channel != 255 {
+					err := encoder.Encode(TCPMessage{Body: PolyAftertouch{
+						Time:     time.Now(),
+						Channel:  channel,
+						Key:      key,
+						Pressure: v.Pressure(),
+					}})
+					must(err)
+				}
+			case Raw:
+				err := encoder.Encode(TCPMessage{Body: Raw{
+					Time: v.Time,
+					Data: v.Data,
+				}})
+				must(err)
+			default:
+				log.Println("Unknown message type:", v)
+			}
+		}()
+	}
+}
+
+func midiClient(midiPort int, delay int, csvRecords []MidiCSVRecord, notesChan chan interface{}) {
 
 	drv, err := driver.New()
 	must(err)
@@ -115,124 +244,13 @@ func midiClient(midiPort int, serverIP string, serverPort int, protocol string, 
 
 	must(in.Open())
 
-	conn := dial(serverIP, serverPort, protocol)
-	encoder := gob.NewEncoder(conn)
-
 	// listen for MIDI messages
 	rd := reader.New(
 		reader.NoLogger(),
 		// write every message to the out port
 		reader.Each(func(pos *reader.Position, msg midi.Message) {
-			// send each message in a separate goroutine
-			go func() {
-				if delay > 0 {
-					time.Sleep(time.Duration(delay) * time.Millisecond)
-				}
-				// process messages differently based on type
-				// this is just so we can deal with a single known struct with exposed fields
-				switch v := msg.(type) {
-				case channel.NoteOn:
-					channel := csvCheckChannel(v.Channel(), csvRecords)
-					key := csvCheckOffset(v.Channel(), v.Key(), csvRecords)
-					midiTuxClientPrint(color.FgHiGreen, v, channel, key)
-					if channel != 255 {
-						err := encoder.Encode(TCPMessage{Body: NoteOn{
-							Time:     time.Now(),
-							Channel:  channel,
-							Key:      key,
-							Velocity: v.Velocity(),
-						}})
-						must(err)
-					}
-				case channel.NoteOff:
-					channel := csvCheckChannel(v.Channel(), csvRecords)
-					key := csvCheckOffset(v.Channel(), v.Key(), csvRecords)
-					midiTuxClientPrint(color.FgHiRed, v, channel, key)
-					if channel != 255 {
-						err := encoder.Encode(TCPMessage{Body: NoteOff{
-							Time:    time.Now(),
-							Channel: channel,
-							Key:     key,
-						}})
-						must(err)
-					}
-				case channel.ProgramChange:
-					channel := csvCheckChannel(v.Channel(), csvRecords)
-					midiTuxClientPrint(color.FgHiYellow, v, channel, 255)
-					if channel != 255 {
-						err := encoder.Encode(TCPMessage{Body: ProgramChange{
-							Time:    time.Now(),
-							Channel: channel,
-							Program: v.Program(),
-						}})
-						must(err)
-					}
-				case channel.Aftertouch:
-					channel := csvCheckChannel(v.Channel(), csvRecords)
-					midiTuxClientPrint(color.FgHiBlue, v, channel, 255)
-					if channel != 255 {
-						err := encoder.Encode(TCPMessage{Body: Aftertouch{
-							Time:     time.Now(),
-							Channel:  channel,
-							Pressure: v.Pressure(),
-						}})
-						must(err)
-					}
-
-				case channel.ControlChange:
-					channel := csvCheckChannel(v.Channel(), csvRecords)
-					midiTuxClientPrint(color.FgHiMagenta, v, channel, 255)
-					if channel != 255 {
-						err := encoder.Encode(TCPMessage{Body: ControlChange{
-							Time:       time.Now(),
-							Channel:    channel,
-							Controller: v.Controller(),
-							Value:      v.Value(),
-						}})
-						must(err)
-					}
-				case channel.NoteOffVelocity:
-					channel := csvCheckChannel(v.Channel(), csvRecords)
-					key := csvCheckOffset(v.Channel(), v.Key(), csvRecords)
-					midiTuxClientPrint(color.FgHiYellow, v, channel, key)
-					if channel != 255 {
-						err := encoder.Encode(TCPMessage{Body: NoteOffVelocity{
-							Time:     time.Now(),
-							Channel:  channel,
-							Key:      key,
-							Velocity: v.Velocity(),
-						}})
-						must(err)
-					}
-				case channel.Pitchbend:
-					channel := csvCheckChannel(v.Channel(), csvRecords)
-					midiTuxClientPrint(color.FgMagenta, v, channel, 255)
-					if channel != 255 {
-						err := encoder.Encode(TCPMessage{Body: Pitchbend{
-							Time:     time.Now(),
-							Channel:  channel,
-							Value:    v.Value(),
-							AbsValue: v.AbsValue(),
-						}})
-						must(err)
-					}
-				case channel.PolyAftertouch:
-					channel := csvCheckChannel(v.Channel(), csvRecords)
-					key := csvCheckOffset(v.Channel(), v.Key(), csvRecords)
-					midiTuxClientPrint(color.FgCyan, v, channel, key)
-					if channel != 255 {
-						err := encoder.Encode(TCPMessage{Body: PolyAftertouch{
-							Time:     time.Now(),
-							Channel:  channel,
-							Key:      key,
-							Pressure: v.Pressure(),
-						}})
-						must(err)
-					}
-				default:
-					log.Println("Unknown message type:", v)
-				}
-			}()
+			// send each message through the channel
+			notesChan <- msg
 		}),
 	)
 	must(rd.ListenTo(in))
