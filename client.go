@@ -40,13 +40,13 @@ func client(midiPort int, serverIP string, serverPort int, protocol string, stdi
 
 	switch stdinMode {
 	case true:
-		stdinClient(serverIP, serverPort, protocol)
+		stdinClient(serverIP, serverPort, protocol, notesChan)
 	default:
 		midiClient(midiPort, delay, csvRecords, notesChan)
 	}
 }
 
-func stdinClient(serverIP string, serverPort int, protocol string) {
+func stdinClient(serverIP string, serverPort int, protocol string, notesChan chan interface{}) {
 
 	channel := make(chan Raw)
 
@@ -93,13 +93,10 @@ func stdinClient(serverIP string, serverPort int, protocol string) {
 	//send stdin to server
 	conn := dial(serverIP, serverPort, protocol)
 	defer conn.Close()
-	// prepare to encode raw
-	encoder := gob.NewEncoder(conn)
 	// read from the channel and send to server
 	for {
 		rawStruct := <-channel
-		err := encoder.Encode(TCPMessage{Body: rawStruct}) // sends a Raw struct to the server
-		must(err)
+		notesChan <- rawStruct
 	}
 }
 
