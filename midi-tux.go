@@ -57,7 +57,7 @@ func midiTuxClientPrint(clr color.Attribute, t interface{}, newChannel uint8, ne
 	case channel.PolyAftertouch:
 		log.Printf("Type: %s, Old Channel: %2d,  New Channel: %2d, Old Key: %3d, New Key: %3d, Pressure: %2d,\n", "Poly Aftertouch", m.Channel(), newChannel, m.Key(), newKey, m.Pressure())
 	case Raw:
-		log.Printf("Type: %s, Old Content: %x\n", "Raw", m.Data)
+		log.Printf("Type: %s, Content: %x\n", "Raw", m.Data)
 	default:
 		log.Printf("Type: %s\n", "Unknown")
 	}

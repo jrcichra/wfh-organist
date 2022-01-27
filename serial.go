@@ -2,7 +2,7 @@ package main
 
 import (
 	"bufio"
-	"fmt"
+	"log"
 	"strconv"
 	"time"
 
@@ -36,12 +36,14 @@ func readSerial(notesChan chan interface{}) {
 			}
 			percentage := expressionPercentage(expression)
 			if percentage != pPercentage {
-				fmt.Println(percentage)
-				value := percentage / 100 * 127
+				log.Println("percentage before math", percentage)
+				value := float64(percentage) / 100.0 * 127.0
+				log.Println("expression value", value)
 				notesChan <- Raw{Time: time.Now(), Data: []byte{0xB0, 0x07, uint8(value)}}
 				notesChan <- Raw{Time: time.Now(), Data: []byte{0xB1, 0x07, uint8(value)}}
 				notesChan <- Raw{Time: time.Now(), Data: []byte{0xB2, 0x07, uint8(value)}}
 			}
+			pPercentage = percentage
 		}
 	}
 }

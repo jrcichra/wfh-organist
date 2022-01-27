@@ -217,6 +217,7 @@ func sendNotesClient(serverIP string, serverPort int, protocol string, delay int
 					Time: v.Time,
 					Data: v.Data,
 				}})
+				midiTuxClientPrint(color.FgCyan, v, 0, 0)
 				must(err)
 			default:
 				log.Println("Unknown message type:", v)
