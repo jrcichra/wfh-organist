@@ -26,7 +26,10 @@ func dial(serverIP string, serverPort int, protocol string) net.Conn {
 	return conn
 }
 
-func client(midiPort int, serverIP string, serverPort int, protocol string, stdinMode bool, delay int, csvRecords []MidiCSVRecord) {
+func client(midiPort int, serverIP string, serverPort int, protocol string, stdinMode bool, delay int) {
+
+	// read the csv
+	csvRecords := readCSV()
 
 	notesChan := make(chan interface{})
 

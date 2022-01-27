@@ -51,21 +51,18 @@ func main() {
 	// register types to gob
 	registerGobTypes()
 
-	// read the csv
-	csvRecords := readCSV()
-
 	// operate in client or server mode
 	switch strings.ToLower(*mode) {
 	case "server":
 		go server(*midiPort, *serverPort, *protocol)
 	case "client":
-		go client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay, csvRecords)
+		go client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay)
 	case "local":
 		// run both (unless serverIP is set, and sleep forever
 		if *serverIP == "localhost" {
 			go server(*midiPort, *serverPort, *protocol)
 		}
-		go client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay, csvRecords)
+		go client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay)
 	default:
 		log.Fatalf("Unknown mode: %s. Must be 'server' or 'client'\n", *mode)
 	}
