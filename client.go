@@ -28,6 +28,9 @@ func dial(serverIP string, serverPort int, protocol string) net.Conn {
 
 func client(midiPort int, serverIP string, serverPort int, protocol string, stdinMode bool, delay int, csvRecords []MidiCSVRecord) {
 
+	// in either mode read the serial for now
+	go readSerial()
+
 	switch stdinMode {
 	case true:
 		stdinClient(serverIP, serverPort, protocol)

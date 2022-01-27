@@ -5,6 +5,7 @@ go 1.17
 require (
 	github.com/fatih/color v1.13.0
 	github.com/prometheus/client_golang v1.11.0
+	github.com/tarm/serial v0.0.0-20180830185346-98f6abe2eb07
 	gitlab.com/gomidi/midi v1.23.7
 	gitlab.com/gomidi/rtmididrv v0.14.0
 )
