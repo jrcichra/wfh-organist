@@ -55,8 +55,8 @@ func server(midiPort int, serverPort int, protocol string) {
 		log.Println("Ready to play music!")
 
 		go func() {
+			dec := gob.NewDecoder(c)
 			for {
-				dec := gob.NewDecoder(c)
 				var t TCPMessage
 				err := dec.Decode(&t)
 				if err == io.EOF {
