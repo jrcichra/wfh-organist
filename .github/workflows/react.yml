@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       working-directory: ./gui
+      CI: ""
     steps:
       - uses: actions/checkout@v2
 
