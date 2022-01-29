@@ -146,6 +146,7 @@ func sendNotes(midiPort int, notesChan chan interface{}) {
 				firstByte := channel + 0x90
 				for k := uint8(0); k <= 0x7F; k++ {
 					midiTuxServerPrint(color.FgHiRed, m, ms)
+					log.Println("justin debug:", []byte{firstByte, k, 0})
 					_, err := out.Write([]byte{firstByte, k, 0})
 					cont(err)
 				}
