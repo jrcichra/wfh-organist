@@ -26,6 +26,8 @@ func startHTTP(notesChan chan interface{}) {
 	http.Handle("/metrics", promhttp.Handler())
 	// serve the website
 	http.Handle("/", http.FileServer(http.Dir("./gui/build")))
+	//serve favicon
+	http.Handle("/favicon.ico", http.FileServer(http.Dir("./gui/build/favicon.ico")))
 	// serve /api
 	http.Handle("/api/midi/raw", handleAPI(notesChan))
 	// http listener
