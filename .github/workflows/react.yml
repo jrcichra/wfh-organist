@@ -16,13 +16,15 @@ jobs:
 
       - name: Install Dependencies
         run: yarn install
+        working-directory: ${{env.working-directory}}
 
       - name: Build Site
         run: yarn build
+        working-directory: ${{env.working-directory}}
 
       - name: Archive production artifacts
         uses: actions/upload-artifact@v2
         with:
           name: build
           path: |
-            build
+            gui/build
