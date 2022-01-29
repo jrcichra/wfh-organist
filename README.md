@@ -1,4 +1,4 @@
-# wfh-organist [![Go Report Card](https://goreportcard.com/badge/github.com/jrcichra/wfh-organist)](https://goreportcard.com/report/github.com/jrcichra/wfh-organist) [![Go](https://github.com/jrcichra/wfh-organist/actions/workflows/go.yml/badge.svg)](https://github.com/jrcichra/wfh-organist/actions/workflows/go.yml)
+# wfh-organist [![Go Report Card](https://goreportcard.com/badge/github.com/jrcichra/wfh-organist)](https://goreportcard.com/report/github.com/jrcichra/wfh-organist) [![Go](https://github.com/jrcichra/wfh-organist/actions/workflows/go.yml/badge.svg)](https://github.com/jrcichra/wfh-organist/actions/workflows/go.yml) [![React](https://github.com/jrcichra/wfh-organist/actions/workflows/react.yml/badge.svg)](https://github.com/jrcichra/wfh-organist/actions/workflows/react.yml)
 
 Be a Work-From-Home Organist. Send regular MIDI over regular TCP/IP.
 
