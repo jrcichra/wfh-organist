@@ -2,6 +2,7 @@ import Peer from 'peerjs';
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import Display from './components/Display';
+import Panic from './components/Panic';
 import Piston from './components/Piston';
 import RockerTab from './components/RockerTab';
 import './Home.css';
@@ -111,6 +112,10 @@ function Home() {
         <RockerTab text="Tremulant" on="b1 63 01 b1 62 30 b1 06 7f" off="b1 63 01 b1 62 30 b1 06 00" />
         <RockerTab text="Swell to Great" on="b1 63 01 b1 62 77 b1 06 7f" off="b1 63 01 b1 62 77 b1 06 00" />
         <RockerTab text="MIDI to Great" on="b1 63 01 b1 62 5f b1 06 7f" off="b1 63 01 b1 62 5f b1 06 00" />
+        <span className="pistonGap"></span>
+        <span className="pistonGap"></span>
+        <span className="pistonGap"></span>
+        <Panic data="b0 7b 00 b1 7b 00 b2 7b 00" />
       </div>
       <p className="title">Pedal Organ</p>
       <div className="col">
