@@ -139,11 +139,36 @@ func sendNotes(midiPort int, notesChan chan interface{}) {
 		case Raw:
 			ms := handleMs(m.Time)
 			midiTuxServerPrint(color.FgBlue, m, ms)
-			// write the raw bytes to the MIDI device
-			_, err := out.Write(m.Data)
-			cont(err)
+			if checkAllNotesOff(m.Data) {
+				// all notes off expansion
+				offChannel := m.Data[0] & 0x0F
+				for k := uint8(0); k <= 0x7F; k++ {
+					midiTuxServerPrint(color.FgHiRed, m, ms)
+					cont(writer.NoteOff(writers[offChannel], k))
+				}
+			} else {
+				// write the raw bytes to the MIDI device
+				_, err := out.Write(m.Data)
+				cont(err)
+			}
 		default:
 			log.Println("Unknown message type:", m)
 		}
+	}
+}
+
+func checkAllNotesOff(data []byte) bool {
+	firstByte := data[0]
+	secondByte := data[1]
+	thirdByte := data[2]
+	switch firstByte {
+	case 0xb0, 0xb1, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7, 0xb8, 0xb9, 0xba, 0xbb, 0xbc, 0xbd, 0xbe, 0xbf:
+		if secondByte == 0x7b && thirdByte == 0x00 {
+			return true
+		} else {
+			return false
+		}
+	default:
+		return false
 	}
 }
