@@ -25,7 +25,7 @@ func startHTTP(notesChan chan interface{}) {
 	// serve metrics
 	http.Handle("/metrics", promhttp.Handler())
 	// serve the website
-	// http.Handle("/", http.FileServer(http.Dir("./static")))
+	http.Handle("/", http.FileServer(http.Dir("./gui/build")))
 	// serve /api
 	http.Handle("/api/midi/raw", handleAPI(notesChan))
 	// http listener
