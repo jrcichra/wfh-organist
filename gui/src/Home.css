@@ -4,21 +4,29 @@
     margin-top: 1.2rem;
   }
   
-  .wrapper {
-    display: flex;
+.wrapper {
+  display: flex;
+  flex-direction: row;
+}
+  
+.stopContainer {
+   display: flex;
     flex-direction: column;
-  }
-  
-  .col {
-  }
-  
-  .videos {
-    display: flex;
-    flex-direction: row;
-  }
-  
-  .videobutton {
-    background-color: skyblue;
-  }
-  
-  
+}
+
+.videos {
+  display: flex;
+  flex-direction: column;
+}
+
+.videobutton {
+  background-color: skyblue;
+}
+
+.localVideo , .remoteVideo {
+  border: .1rem;
+  border-style: solid;
+  border-color: black;
+  margin: 1rem;
+  height: 21rem;
+}

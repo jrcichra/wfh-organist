@@ -1,0 +1,12 @@
+.videoTitle {
+    font-size: 1.2em;
+    font-weight: bold;
+    margin-bottom: 0.2em;
+    margin-top: .2rem;
+    text-align: center;
+}
+
+.videoWrapper {
+    display: flex;
+    flex-direction: column;
+}
