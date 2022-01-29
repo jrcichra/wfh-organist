@@ -1,9 +1,11 @@
 package main
 
 import (
-	"io/ioutil"
+	"bufio"
+	"encoding/hex"
 	"log"
 	"net/http"
+	"time"
 )
 
 // send message from the api to the midi server
@@ -42,22 +44,41 @@ func apiHandleRaw(w http.ResponseWriter, r *http.Request, notesChan chan interfa
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	// read the body into a string
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
+
+	scanner := bufio.NewScanner(r.Body)
+
+	scanner.Split(bufio.ScanWords)
+	// keep count, send 3 at a time
+	count := 0
+	// hold bytes
+	bytes := make([]byte, 0)
+	for scanner.Scan() {
+		//convert token string to hex code
+		text := scanner.Text()
+		// each token must be size 2
+		if len(text) != 2 {
+			panic("Token must be size 2")
+		}
+		hexToken, err := hex.DecodeString(text)
+		if err != nil {
+			log.Println(err)
+			break
+		}
+		// append to bytes
+		bytes = append(bytes, hexToken...)
+		if count >= 2 {
+			//send hex code to channel
+			notesChan <- Raw{
+				Time: time.Now(),
+				Data: bytes,
+			}
+			count = 0
+			// clear bytes
+			bytes = make([]byte, 0)
+		} else {
+			count++
+		}
 	}
-	// parse the body
-	raw, err := hexToRawStruct(string(body))
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	// send the message
-	notesChan <- raw
 	// send a success message
 	w.WriteHeader(http.StatusOK)
 
