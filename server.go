@@ -141,10 +141,10 @@ func sendNotes(midiPort int, notesChan chan interface{}) {
 			midiTuxServerPrint(color.FgBlue, m, ms)
 			if checkAllNotesOff(m.Data) {
 				// all notes off expansion
-				offChannel := m.Data[0] & 0x0F
 				for k := uint8(0); k <= 0x7F; k++ {
 					midiTuxServerPrint(color.FgHiRed, m, ms)
-					cont(writer.NoteOff(writers[offChannel], k))
+					_, err := out.Write([]byte{m.Data[0], k, 0})
+					cont(err)
 				}
 			} else {
 				// write the raw bytes to the MIDI device
