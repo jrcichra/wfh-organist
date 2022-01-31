@@ -23,7 +23,7 @@ function Home() {
 
   useEffect(() => {
 
-    if (location.pathname === '/server') {
+    if (new URLSearchParams(location.search).get("mode") === 'server') {
       peer.current = new Peer('wfh-organist-server');
       setMyID('wfh-organist-server');
       setRemoteID('wfh-organist-client');
