@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -37,7 +38,8 @@ func client(midiPort int, serverIP string, serverPort int, protocol string, stdi
 	go readSerial(notesChan)
 	// ability to send notes
 	go sendNotesClient(serverIP, serverPort, protocol, delay, notesChan, csvRecords)
-
+	// ability to get your own notes back
+	go midiClientFeedback(serverIP, 3132, protocol)
 	switch stdinMode {
 	case true:
 		stdinClient(serverIP, serverPort, protocol, notesChan)
@@ -90,9 +92,6 @@ func stdinClient(serverIP string, serverPort int, protocol string, notesChan cha
 		os.Exit(0)
 	}()
 
-	//send stdin to server
-	conn := dial(serverIP, serverPort, protocol)
-	defer conn.Close()
 	// read from the channel and send to server
 	for {
 		rawStruct := <-channel
@@ -118,7 +117,6 @@ func sendNotesClient(serverIP string, serverPort int, protocol string, delay int
 				channel := csvCheckChannel(v.Channel(), csvRecords)
 				key := csvCheckOffset(v.Channel(), v.Key(), csvRecords)
 				if channel != 255 {
-					midiTuxClientPrint(color.FgHiGreen, v, channel, key)
 					err := encoder.Encode(TCPMessage{Body: NoteOn{
 						Time:     time.Now(),
 						Channel:  channel,
@@ -131,7 +129,6 @@ func sendNotesClient(serverIP string, serverPort int, protocol string, delay int
 				channel := csvCheckChannel(v.Channel(), csvRecords)
 				key := csvCheckOffset(v.Channel(), v.Key(), csvRecords)
 				if channel != 255 {
-					midiTuxClientPrint(color.FgHiRed, v, channel, key)
 					err := encoder.Encode(TCPMessage{Body: NoteOff{
 						Time:    time.Now(),
 						Channel: channel,
@@ -142,7 +139,6 @@ func sendNotesClient(serverIP string, serverPort int, protocol string, delay int
 			case channel.ProgramChange:
 				channel := csvCheckChannel(v.Channel(), csvRecords)
 				if channel != 255 {
-					midiTuxClientPrint(color.FgHiYellow, v, channel, 255)
 					err := encoder.Encode(TCPMessage{Body: ProgramChange{
 						Time:    time.Now(),
 						Channel: channel,
@@ -153,7 +149,6 @@ func sendNotesClient(serverIP string, serverPort int, protocol string, delay int
 			case channel.Aftertouch:
 				channel := csvCheckChannel(v.Channel(), csvRecords)
 				if channel != 255 {
-					midiTuxClientPrint(color.FgHiBlue, v, channel, 255)
 					err := encoder.Encode(TCPMessage{Body: Aftertouch{
 						Time:     time.Now(),
 						Channel:  channel,
@@ -165,7 +160,6 @@ func sendNotesClient(serverIP string, serverPort int, protocol string, delay int
 			case channel.ControlChange:
 				channel := csvCheckChannel(v.Channel(), csvRecords)
 				if channel != 255 {
-					midiTuxClientPrint(color.FgHiMagenta, v, channel, 255)
 					err := encoder.Encode(TCPMessage{Body: ControlChange{
 						Time:       time.Now(),
 						Channel:    channel,
@@ -178,7 +172,6 @@ func sendNotesClient(serverIP string, serverPort int, protocol string, delay int
 				channel := csvCheckChannel(v.Channel(), csvRecords)
 				key := csvCheckOffset(v.Channel(), v.Key(), csvRecords)
 				if channel != 255 {
-					midiTuxClientPrint(color.FgHiYellow, v, channel, key)
 					err := encoder.Encode(TCPMessage{Body: NoteOffVelocity{
 						Time:     time.Now(),
 						Channel:  channel,
@@ -190,7 +183,6 @@ func sendNotesClient(serverIP string, serverPort int, protocol string, delay int
 			case channel.Pitchbend:
 				channel := csvCheckChannel(v.Channel(), csvRecords)
 				if channel != 255 {
-					midiTuxClientPrint(color.FgMagenta, v, channel, 255)
 					err := encoder.Encode(TCPMessage{Body: Pitchbend{
 						Time:     time.Now(),
 						Channel:  channel,
@@ -203,7 +195,6 @@ func sendNotesClient(serverIP string, serverPort int, protocol string, delay int
 				channel := csvCheckChannel(v.Channel(), csvRecords)
 				key := csvCheckOffset(v.Channel(), v.Key(), csvRecords)
 				if channel != 255 {
-					midiTuxClientPrint(color.FgCyan, v, channel, key)
 					err := encoder.Encode(TCPMessage{Body: PolyAftertouch{
 						Time:     time.Now(),
 						Channel:  channel,
@@ -217,7 +208,6 @@ func sendNotesClient(serverIP string, serverPort int, protocol string, delay int
 					Time: v.Time,
 					Data: v.Data,
 				}})
-				midiTuxClientPrint(color.FgCyan, v, 0, 0)
 				must(err)
 			default:
 				log.Println("Unknown message type:", v)
@@ -257,4 +247,59 @@ func midiClient(midiPort int, delay int, csvRecords []MidiCSVRecord, notesChan c
 	must(rd.ListenTo(in))
 	// sleep forever
 	select {}
+}
+
+// Listen for midi notes coming back so they can be printed
+func midiClientFeedback(serverIP string, serverPort int, protocol string) {
+	conn := dial(serverIP, serverPort, protocol)
+	dec := gob.NewDecoder(conn)
+
+	for {
+		var t TCPMessage
+		err := dec.Decode(&t)
+		if err == io.EOF {
+			log.Println("Feedback connection closed by server.")
+			conn.Close()
+			return
+		}
+		if err != nil {
+			cont(err)
+		} else {
+			// print with midiTux
+			switch m := t.Body.(type) {
+			case NoteOn:
+				ms := handleMs(m.Time)
+				midiTuxPrint(color.FgHiGreen, t.Body, ms)
+			case NoteOff:
+				ms := handleMs(m.Time)
+				midiTuxPrint(color.FgHiRed, t.Body, ms)
+			case ProgramChange:
+				ms := handleMs(m.Time)
+				midiTuxPrint(color.FgHiYellow, t.Body, ms)
+			case Aftertouch:
+				ms := handleMs(m.Time)
+				midiTuxPrint(color.FgHiBlue, t.Body, ms)
+			case ControlChange:
+				ms := handleMs(m.Time)
+				midiTuxPrint(color.FgHiMagenta, t.Body, ms)
+			case NoteOffVelocity:
+				ms := handleMs(m.Time)
+				midiTuxPrint(color.FgYellow, t.Body, ms)
+			case Pitchbend:
+				ms := handleMs(m.Time)
+				midiTuxPrint(color.FgMagenta, t.Body, ms)
+			case PolyAftertouch:
+				ms := handleMs(m.Time)
+				midiTuxPrint(color.FgCyan, t.Body, ms)
+			case Raw:
+				ms := handleMs(m.Time)
+				midiTuxPrint(color.FgBlue, t.Body, ms)
+			default:
+				log.Println("Unknown message type:", m)
+			}
+
+		}
+
+	}
+
 }
