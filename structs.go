@@ -1,6 +1,10 @@
 package main
 
-import "time"
+import (
+	"time"
+
+	"github.com/fatih/color"
+)
 
 type MidiCSVRecord struct {
 	InputChannel  uint8
@@ -78,4 +82,11 @@ type Raw struct {
 // Get around gob types
 type TCPMessage struct {
 	Body interface{}
+}
+
+//Messages sent to MidiTux to print
+type MidiTuxMessage struct {
+	Color color.Attribute
+	T     interface{}
+	Ms    int64
 }

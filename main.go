@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"log"
-	"net/http"
 	_ "net/http/pprof"
 	"strconv"
 	"strings"
@@ -53,23 +52,22 @@ func main() {
 	// register types to gob
 	registerGobTypes()
 
-	// serve pprof debug for stuck goroutines
-	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
+	// spin up a midi-tux goroutine to handle message outputs
+	midiTuxChan := make(chan MidiTuxMessage, 100)
+	go midiTux(midiTuxChan)
 
 	// operate in client or server mode
 	switch strings.ToLower(*mode) {
 	case "server":
-		go server(*midiPort, *serverPort, *protocol)
+		go server(*midiPort, *serverPort, *protocol, midiTuxChan)
 	case "client":
-		go client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay)
+		go client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay, midiTuxChan)
 	case "local":
 		// run both (unless serverIP is set, and sleep forever
 		if *serverIP == "localhost" {
-			go server(*midiPort, *serverPort, *protocol)
+			go server(*midiPort, *serverPort, *protocol, midiTuxChan)
 		}
-		go client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay)
+		go client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay, midiTuxChan)
 	default:
 		log.Fatalf("Unknown mode: %s. Must be 'server' or 'client'\n", *mode)
 	}

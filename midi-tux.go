@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"sync"
 
 	"github.com/fatih/color"
 )
@@ -10,10 +9,15 @@ import (
 // Midi Tux prints colorful messages to the console
 // Inspired by http://www.midiox.com/
 
-var midiTuxColorMutex = &sync.Mutex{}
+func midiTux(messages chan MidiTuxMessage) {
+	for {
+		message := <-messages
+		midiTuxPrint(message.Color, message.T, message.Ms)
+	}
+}
 
+// this should only be called from the midiTux func
 func midiTuxPrint(clr color.Attribute, t interface{}, ms int64) {
-	midiTuxColorMutex.Lock()
 	color.Set(clr)
 	switch m := t.(type) {
 	case NoteOn:
@@ -38,5 +42,4 @@ func midiTuxPrint(clr color.Attribute, t interface{}, ms int64) {
 		log.Printf("Type: %s,\n", "Unknown")
 	}
 	color.Unset()
-	midiTuxColorMutex.Unlock()
 }

@@ -26,7 +26,7 @@ func startHTTP(notesChan chan interface{}) {
 	http.ListenAndServe(":8080", nil)
 }
 
-func server(midiPort int, serverPort int, protocol string) {
+func server(midiPort int, serverPort int, protocol string, midiTuxChan chan MidiTuxMessage) {
 
 	// wait for someone to connect to the server
 	l, err := net.Listen(protocol, ":"+strconv.Itoa(serverPort))
@@ -35,7 +35,7 @@ func server(midiPort int, serverPort int, protocol string) {
 
 	//send notes listening to a go channel
 	notesChan := make(chan interface{})
-	go sendNotes(midiPort, notesChan)
+	go sendNotes(midiPort, notesChan, midiTuxChan)
 
 	// send notes back to the client too
 	feedbackChan := make(chan interface{})
@@ -105,7 +105,7 @@ func feedbackNotes(feedbackChan chan interface{}) {
 	}
 }
 
-func sendNotes(midiPort int, notesChan chan interface{}) {
+func sendNotes(midiPort int, notesChan chan interface{}, midiTuxChan chan MidiTuxMessage) {
 
 	drv, err := driver.New()
 	must(err)
@@ -138,35 +138,67 @@ func sendNotes(midiPort int, notesChan chan interface{}) {
 		case NoteOn:
 			ms := handleMs(m.Time)
 			cont(writer.NoteOn(writers[m.Channel], m.Key, m.Velocity))
-			midiTuxPrint(color.FgHiGreen, m, ms)
+			midiTuxChan <- MidiTuxMessage{
+				Color: color.FgHiGreen,
+				T:     m,
+				Ms:    ms,
+			}
 		case NoteOff:
 			ms := handleMs(m.Time)
 			cont(writer.NoteOff(writers[m.Channel], m.Key))
-			midiTuxPrint(color.FgHiRed, m, ms)
+			midiTuxChan <- MidiTuxMessage{
+				Color: color.FgHiRed,
+				T:     m,
+				Ms:    ms,
+			}
 		case ProgramChange:
 			ms := handleMs(m.Time)
 			cont(writer.ProgramChange(writers[m.Channel], m.Program))
-			midiTuxPrint(color.FgHiYellow, m, ms)
+			midiTuxChan <- MidiTuxMessage{
+				Color: color.FgHiYellow,
+				T:     m,
+				Ms:    ms,
+			}
 		case Aftertouch:
 			ms := handleMs(m.Time)
 			cont(writer.Aftertouch(writers[m.Channel], m.Pressure))
-			midiTuxPrint(color.FgHiBlue, m, ms)
+			midiTuxChan <- MidiTuxMessage{
+				Color: color.FgHiBlue,
+				T:     m,
+				Ms:    ms,
+			}
 		case ControlChange:
 			ms := handleMs(m.Time)
 			cont(writer.ControlChange(writers[m.Channel], m.Controller, m.Value))
-			midiTuxPrint(color.FgHiMagenta, m, ms)
+			midiTuxChan <- MidiTuxMessage{
+				Color: color.FgHiMagenta,
+				T:     m,
+				Ms:    ms,
+			}
 		case NoteOffVelocity:
 			ms := handleMs(m.Time)
 			cont(writer.NoteOffVelocity(writers[m.Channel], m.Key, m.Velocity))
-			midiTuxPrint(color.FgYellow, m, ms)
+			midiTuxChan <- MidiTuxMessage{
+				Color: color.FgYellow,
+				T:     m,
+				Ms:    ms,
+			}
 		case Pitchbend:
 			ms := handleMs(m.Time)
 			cont(writer.Pitchbend(writers[m.Channel], m.Value))
-			midiTuxPrint(color.FgMagenta, m, ms)
+			midiTuxChan <- MidiTuxMessage{
+				Color: color.FgMagenta,
+				T:     m,
+				Ms:    ms,
+			}
 		case PolyAftertouch:
 			ms := handleMs(m.Time)
 			cont(writer.PolyAftertouch(writers[m.Channel], m.Key, m.Pressure))
-			midiTuxPrint(color.FgCyan, m, ms)
+			midiTuxChan <- MidiTuxMessage{
+				Color: color.FgCyan,
+				T:     m,
+				Ms:    ms,
+			}
 		case Raw:
 			ms := handleMs(m.Time)
 			midiTuxPrint(color.FgBlue, m, ms)
@@ -176,7 +208,11 @@ func sendNotes(midiPort int, notesChan chan interface{}) {
 				channel := m.Data[0] - 0xB0
 				firstByte := channel + 0x90
 				for k := uint8(0); k <= 0x7F; k++ {
-					midiTuxPrint(color.FgHiRed, m, ms)
+					midiTuxChan <- MidiTuxMessage{
+						Color: color.FgHiRed,
+						T:     m,
+						Ms:    ms,
+					}
 					// dont overwhelm the midi output
 					time.Sleep(1 * time.Millisecond)
 					_, err := out.Write([]byte{firstByte, k, 0})
@@ -186,6 +222,11 @@ func sendNotes(midiPort int, notesChan chan interface{}) {
 				// write the raw bytes to the MIDI device
 				_, err := out.Write(m.Data)
 				cont(err)
+			}
+			midiTuxChan <- MidiTuxMessage{
+				Color: color.FgBlue,
+				T:     m,
+				Ms:    ms,
 			}
 		default:
 			log.Println("Unknown message type:", m)
