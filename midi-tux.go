@@ -17,7 +17,7 @@ func midiTuxPrint(clr color.Attribute, t interface{}, ms int64) {
 	color.Set(clr)
 	switch m := t.(type) {
 	case NoteOn:
-		log.Printf("Type: %s, Channel: %2d, Key: %3d, Velocity: %2d, %d ms\n", "Note On", m.Channel+1, m.Key, m.Velocity, ms)
+		log.Printf("Type: %s, Channel: %2d, Key: %3d, Velocity: %2d, %d ms\n", "Note On ", m.Channel+1, m.Key, m.Velocity, ms)
 	case NoteOff:
 		log.Printf("Type: %s, Channel: %2d, Key: %3d, Velocity: %2d, %d ms\n", "Note Off", m.Channel+1, m.Key, 0, ms)
 	case ProgramChange:
