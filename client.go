@@ -15,6 +15,7 @@ import (
 	"gitlab.com/gomidi/midi"
 	"gitlab.com/gomidi/midi/midimessage/channel"
 	"gitlab.com/gomidi/midi/reader"
+	"gitlab.com/gomidi/midi/writer"
 	driver "gitlab.com/gomidi/rtmididrv"
 )
 
@@ -34,17 +35,49 @@ func client(midiPort int, serverIP string, serverPort int, protocol string, stdi
 
 	notesChan := make(chan interface{})
 
+	drv, err := driver.New()
+	must(err)
+
+	// make sure to close all open ports at the end
+	defer drv.Close()
+
+	ins, err := drv.Ins()
+	must(err)
+
+	if len(ins)-1 < midiPort {
+		log.Printf("Too few MIDI IN Ports found. Wanted Index: %d. Max Index: %d\n", midiPort, len(ins)-1)
+		return
+	}
+	in := ins[midiPort]
+
+	must(in.Open())
+
+	outs, err := drv.Outs()
+	must(err)
+
+	out := outs[midiPort]
+
+	must(out.Open())
+
+	// make a writer for each channel
+	writers := make([]*writer.Writer, 16)
+	var i uint8
+	for ; i < 16; i++ {
+		writers[i] = writer.New(out)
+		writers[i].SetChannel(i)
+	}
+
 	// in either mode read the serial for now
 	go readSerial(notesChan)
 	// ability to send notes
 	go sendNotesClient(serverIP, serverPort, protocol, delay, notesChan, csvRecords)
 	// ability to get your own notes back
-	go midiClientFeedback(serverIP, 3132, protocol)
+	go midiClientFeedback(serverIP, 3132, protocol, writers)
 	switch stdinMode {
 	case true:
 		stdinClient(serverIP, serverPort, protocol, notesChan)
 	default:
-		midiClient(midiPort, delay, csvRecords, notesChan)
+		midiClient(midiPort, delay, csvRecords, notesChan, in)
 	}
 }
 
@@ -216,24 +249,7 @@ func sendNotesClient(serverIP string, serverPort int, protocol string, delay int
 	}
 }
 
-func midiClient(midiPort int, delay int, csvRecords []MidiCSVRecord, notesChan chan interface{}) {
-
-	drv, err := driver.New()
-	must(err)
-
-	// make sure to close all open ports at the end
-	defer drv.Close()
-
-	ins, err := drv.Ins()
-	must(err)
-
-	if len(ins)-1 < midiPort {
-		log.Printf("Too few MIDI IN Ports found. Wanted Index: %d. Max Index: %d\n", midiPort, len(ins)-1)
-		return
-	}
-	in := ins[midiPort]
-
-	must(in.Open())
+func midiClient(midiPort int, delay int, csvRecords []MidiCSVRecord, notesChan chan interface{}, in midi.In) {
 
 	// listen for MIDI messages
 	rd := reader.New(
@@ -250,7 +266,7 @@ func midiClient(midiPort int, delay int, csvRecords []MidiCSVRecord, notesChan c
 }
 
 // Listen for midi notes coming back so they can be printed
-func midiClientFeedback(serverIP string, serverPort int, protocol string) {
+func midiClientFeedback(serverIP string, serverPort int, protocol string, writers []*writer.Writer) {
 	conn := dial(serverIP, serverPort, protocol)
 	dec := gob.NewDecoder(conn)
 
@@ -269,27 +285,35 @@ func midiClientFeedback(serverIP string, serverPort int, protocol string) {
 			switch m := t.Body.(type) {
 			case NoteOn:
 				ms := handleMs(m.Time)
+				cont(writer.NoteOn(writers[m.Channel], m.Key, m.Velocity))
 				midiTuxPrint(color.FgHiGreen, t.Body, ms)
 			case NoteOff:
 				ms := handleMs(m.Time)
+				cont(writer.NoteOff(writers[m.Channel], m.Key))
 				midiTuxPrint(color.FgHiRed, t.Body, ms)
 			case ProgramChange:
 				ms := handleMs(m.Time)
+				cont(writer.ProgramChange(writers[m.Channel], m.Program))
 				midiTuxPrint(color.FgHiYellow, t.Body, ms)
 			case Aftertouch:
 				ms := handleMs(m.Time)
+				cont(writer.Aftertouch(writers[m.Channel], m.Pressure))
 				midiTuxPrint(color.FgHiBlue, t.Body, ms)
 			case ControlChange:
 				ms := handleMs(m.Time)
+				cont(writer.ControlChange(writers[m.Channel], m.Controller, m.Value))
 				midiTuxPrint(color.FgHiMagenta, t.Body, ms)
 			case NoteOffVelocity:
 				ms := handleMs(m.Time)
+				cont(writer.NoteOffVelocity(writers[m.Channel], m.Key, m.Velocity))
 				midiTuxPrint(color.FgYellow, t.Body, ms)
 			case Pitchbend:
 				ms := handleMs(m.Time)
+				cont(writer.Pitchbend(writers[m.Channel], m.Value))
 				midiTuxPrint(color.FgMagenta, t.Body, ms)
 			case PolyAftertouch:
 				ms := handleMs(m.Time)
+				cont(writer.PolyAftertouch(writers[m.Channel], m.Key, m.Pressure))
 				midiTuxPrint(color.FgCyan, t.Body, ms)
 			case Raw:
 				ms := handleMs(m.Time)
