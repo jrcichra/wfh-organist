@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"log"
+	"net/http"
+	_ "net/http/pprof"
 	"strconv"
 	"strings"
 )
@@ -50,6 +52,11 @@ func main() {
 
 	// register types to gob
 	registerGobTypes()
+
+	// serve pprof debug for stuck goroutines
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
 
 	// operate in client or server mode
 	switch strings.ToLower(*mode) {
