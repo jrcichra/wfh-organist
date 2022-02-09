@@ -9,10 +9,10 @@ import (
 // Midi Tux prints colorful messages to the console
 // Inspired by http://www.midiox.com/
 
-func midiTux(messages chan MidiTuxMessage) {
+func midiTux(midiTuxChan chan MidiTuxMessage) {
 	for {
-		message := <-messages
-		midiTuxPrint(message.Color, message.T, message.Ms)
+		midiTuxMsg := <-midiTuxChan
+		midiTuxPrint(midiTuxMsg.Color, midiTuxMsg.T, midiTuxMsg.Ms)
 	}
 }
 
