@@ -72,7 +72,7 @@ func client(midiPort int, serverIP string, serverPort int, protocol string, stdi
 	// ability to send notes
 	go sendNotesClient(serverIP, serverPort, protocol, delay, notesChan, csvRecords)
 	// ability to get your own notes back
-	go midiClientFeedback(serverIP, 3132, protocol, writers)
+	go midiClientFeedback(serverIP, 3132, protocol, writers, out)
 	switch stdinMode {
 	case true:
 		stdinClient(serverIP, serverPort, protocol, notesChan)
@@ -266,7 +266,7 @@ func midiClient(midiPort int, delay int, csvRecords []MidiCSVRecord, notesChan c
 }
 
 // Listen for midi notes coming back so they can be printed
-func midiClientFeedback(serverIP string, serverPort int, protocol string, writers []*writer.Writer) {
+func midiClientFeedback(serverIP string, serverPort int, protocol string, writers []*writer.Writer, out midi.Out) {
 	conn := dial(serverIP, serverPort, protocol)
 	dec := gob.NewDecoder(conn)
 
@@ -317,6 +317,22 @@ func midiClientFeedback(serverIP string, serverPort int, protocol string, writer
 				midiTuxPrint(color.FgCyan, t.Body, ms)
 			case Raw:
 				ms := handleMs(m.Time)
+				if checkAllNotesOff(m.Data) {
+					// all notes off expansion
+					channel := m.Data[0] - 0xB0
+					firstByte := channel + 0x90
+					for k := uint8(0); k <= 0x7F; k++ {
+						midiTuxPrint(color.FgHiRed, m, ms)
+						// dont overwhelm the midi output
+						time.Sleep(1 * time.Millisecond)
+						_, err := out.Write([]byte{firstByte, k, 0})
+						cont(err)
+					}
+				} else {
+					// write the raw bytes to the MIDI device
+					_, err := out.Write(m.Data)
+					cont(err)
+				}
 				midiTuxPrint(color.FgBlue, t.Body, ms)
 			default:
 				log.Println("Unknown message type:", m)
