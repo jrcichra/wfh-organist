@@ -48,7 +48,7 @@ function Home() {
     peer.current.on('call', (call: any) => {
       console.log('Received call');
       (async () => {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
         setLocalStream(stream);
         call.answer(stream);
         call.on('stream', (remoteStream: any) => {
@@ -63,7 +63,7 @@ function Home() {
   const videoCall = () => {
     (async () => {
       console.log('Starting call');
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
       setLocalStream(stream);
       const call = peer.current.call(remoteID, stream);
       call.on('stream', (remoteStream: any) => {
