@@ -8,6 +8,21 @@ import RockerTab from './components/RockerTab';
 import './Home.css';
 import Video from './components/Video';
 
+const audioOptions: MediaTrackConstraints = {
+  autoGainControl: false,
+  channelCount: 2,
+  echoCancellation: false,
+  latency: 0,
+  noiseSuppression: false,
+  sampleRate: 16000,
+  sampleSize: 8,
+}
+
+const videoOptions: MediaTrackConstraints = {
+  frameRate: 2,
+  width: 640,
+  height: 480,
+}
 
 function Home() {
 
@@ -48,7 +63,9 @@ function Home() {
     peer.current.on('call', (call: any) => {
       console.log('Received call');
       (async () => {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: videoOptions, audio: audioOptions,
+        });
         setLocalStream(stream);
         call.answer(stream);
         call.on('stream', (remoteStream: any) => {
@@ -63,7 +80,7 @@ function Home() {
   const videoCall = () => {
     (async () => {
       console.log('Starting call');
-      const stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: videoOptions, audio: audioOptions });
       setLocalStream(stream);
       const call = peer.current.call(remoteID, stream);
       call.on('stream', (remoteStream: any) => {
