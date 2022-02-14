@@ -351,19 +351,7 @@ func midiClientFeedback(serverIP string, serverPort int, protocol string, writer
 				ms := handleMs(m.Time)
 				if checkAllNotesOff(m.Data) {
 					// all notes off expansion
-					channel := m.Data[0] - 0xB0
-					firstByte := channel + 0x90
-					for k := uint8(0); k <= 0x7F; k++ {
-						midiTuxChan <- MidiTuxMessage{
-							Color: color.FgHiRed,
-							T:     m,
-							Ms:    ms,
-						}
-						// dont overwhelm the midi output
-						time.Sleep(1 * time.Millisecond)
-						_, err := out.Write([]byte{firstByte, k, 0})
-						cont(err)
-					}
+					expandAllNotesOff(m, ms, midiTuxChan, out)
 				} else {
 					// write the raw bytes to the MIDI device
 					_, err := out.Write(m.Data)

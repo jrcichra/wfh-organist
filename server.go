@@ -7,7 +7,6 @@ import (
 	"net"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/fatih/color"
 	"gitlab.com/gomidi/midi/writer"
@@ -204,20 +203,7 @@ func sendNotes(midiPort int, notesChan chan interface{}, midiTuxChan chan MidiTu
 			midiTuxPrint(color.FgBlue, m, ms)
 			if checkAllNotesOff(m.Data) {
 				// all notes off expansion
-
-				channel := m.Data[0] - 0xB0
-				firstByte := channel + 0x90
-				for k := uint8(0); k <= 0x7F; k++ {
-					midiTuxChan <- MidiTuxMessage{
-						Color: color.FgHiRed,
-						T:     m,
-						Ms:    ms,
-					}
-					// dont overwhelm the midi output
-					time.Sleep(1 * time.Millisecond)
-					_, err := out.Write([]byte{firstByte, k, 0})
-					cont(err)
-				}
+				expandAllNotesOff(m, ms, midiTuxChan, out)
 			} else {
 				// write the raw bytes to the MIDI device
 				_, err := out.Write(m.Data)
@@ -231,21 +217,5 @@ func sendNotes(midiPort int, notesChan chan interface{}, midiTuxChan chan MidiTu
 		default:
 			log.Println("Unknown message type:", m)
 		}
-	}
-}
-
-func checkAllNotesOff(data []byte) bool {
-	firstByte := data[0]
-	secondByte := data[1]
-	thirdByte := data[2]
-	switch firstByte {
-	case 0xb0, 0xb1, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7, 0xb8, 0xb9, 0xba, 0xbb, 0xbc, 0xbd, 0xbe, 0xbf:
-		if secondByte == 0x7b && thirdByte == 0x00 {
-			return true
-		} else {
-			return false
-		}
-	default:
-		return false
 	}
 }
