@@ -28,7 +28,7 @@ func dial(serverIP string, serverPort int, protocol string) net.Conn {
 	return conn
 }
 
-func client(midiPort int, serverIP string, serverPort int, protocol string, stdinMode bool, delay int, midiTuxChan chan MidiTuxMessage) {
+func client(midiPort int, serverIP string, serverPort int, protocol string, stdinMode bool, delay int, file string, midiTuxChan chan MidiTuxMessage) {
 
 	// read the csv
 	csvRecords := readCSV()
@@ -77,7 +77,12 @@ func client(midiPort int, serverIP string, serverPort int, protocol string, stdi
 	case true:
 		stdinClient(serverIP, serverPort, protocol, notesChan)
 	default:
-		midiClient(midiPort, delay, csvRecords, notesChan, in)
+		switch file == "" {
+		case true:
+			midiClient(midiPort, delay, notesChan, in)
+		default:
+			playMidiFile(notesChan, file)
+		}
 	}
 }
 
@@ -249,7 +254,7 @@ func sendNotesClient(serverIP string, serverPort int, protocol string, delay int
 	}
 }
 
-func midiClient(midiPort int, delay int, csvRecords []MidiCSVRecord, notesChan chan interface{}, in midi.In) {
+func midiClient(midiPort int, delay int, notesChan chan interface{}, in midi.In) {
 
 	// listen for MIDI messages
 	rd := reader.New(
