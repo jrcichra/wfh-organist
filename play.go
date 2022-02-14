@@ -14,6 +14,8 @@ import (
 // https://pkg.go.dev/gitlab.com/gomidi/midi/player#Player
 func playMidiFile(notesChan chan interface{}, file string) {
 
+	log.Println("Playing midi file:", file)
+
 	player, err := player.SMF(file)
 	if err != nil {
 		log.Fatal(err)
@@ -29,8 +31,6 @@ func playMidiFile(notesChan chan interface{}, file string) {
 			notesChan <- v
 		}
 	})
-
 	// sleep forever
-	log.Println("Playing midi file:", file)
 	select {}
 }
