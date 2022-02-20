@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+        "os"
 	"log"
 	_ "net/http/pprof"
 	"strconv"
@@ -9,6 +10,7 @@ import (
 )
 
 func main() {
+        log.SetOutput(os.Stdout)
 
 	// get args
 	serverIP := flag.String("server", "localhost", "server IP")

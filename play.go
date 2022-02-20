@@ -29,6 +29,10 @@ func playMidiFile(notesChan chan interface{}, file string) {
 			notesChan <- v
 		case channel.NoteOff:
 			notesChan <- v
+		case channel.ProgramChange:
+			notesChan <- v
+		case channel.ControlChange:
+			notesChan <- v
 		}
 	})
 	// sleep forever
