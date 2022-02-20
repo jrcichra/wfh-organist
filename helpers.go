@@ -3,6 +3,9 @@ package main
 import (
 	"encoding/gob"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/fatih/color"
@@ -59,20 +62,35 @@ func getLists() {
 }
 
 func expandAllNotesOff(m Raw, ms int64, midiTuxChan chan MidiTuxMessage, out midi.Out) {
-	// all notes off expansion
-
-	channel := m.Data[0] - 0xB0
-	firstByte := channel + 0x90
-	for k := uint8(0); k <= 0x7F; k++ {
-		midiTuxChan <- MidiTuxMessage{
-			Color: color.FgHiRed,
-			T:     m,
-			Ms:    ms,
+	// for all channels
+	var channel byte
+	for channel = 0; channel < 16; channel++ {
+		firstByte := channel + 0x90
+		for k := uint8(0); k <= 0x7F; k++ {
+			midiTuxChan <- MidiTuxMessage{
+				Color: color.FgHiRed,
+				T:     m,
+				Ms:    ms,
+			}
+			// dont overwhelm the midi output
+			time.Sleep(1 * time.Millisecond)
+			_, err := out.Write([]byte{firstByte, k, 0})
+			cont(err)
 		}
-		// dont overwhelm the midi output
-		time.Sleep(1 * time.Millisecond)
-		_, err := out.Write([]byte{firstByte, k, 0})
-		cont(err)
+	}
+}
+
+func expandAllNotesOffSignal(out midi.Out) {
+	// for all channels
+	var channel byte
+	for channel = 0; channel < 16; channel++ {
+		firstByte := channel + 0x90
+		for k := uint8(0); k <= 0x7F; k++ {
+			// dont overwhelm the midi output
+			time.Sleep(1 * time.Millisecond)
+			_, err := out.Write([]byte{firstByte, k, 0})
+			cont(err)
+		}
 	}
 }
 
@@ -90,6 +108,18 @@ func checkAllNotesOff(data []byte) bool {
 	default:
 		return false
 	}
+}
+
+func SetupCloseHandler(out midi.Out) {
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		log.Println("\r- Ctrl+C pressed in Terminal. Turning off all notes.")
+		expandAllNotesOffSignal(out)
+		log.Println("Exiting...")
+		os.Exit(0)
+	}()
 }
 
 func registerGobTypes() {

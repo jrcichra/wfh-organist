@@ -59,6 +59,8 @@ func client(midiPort int, serverIP string, serverPort int, protocol string, stdi
 
 	must(out.Open())
 
+	SetupCloseHandler(out)
+
 	// make a writer for each channel
 	writers := make([]*writer.Writer, 16)
 	var i uint8
