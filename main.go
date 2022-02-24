@@ -2,21 +2,19 @@ package main
 
 import (
 	"flag"
-        "os"
 	"log"
 	_ "net/http/pprof"
-	"strconv"
+	"os"
 	"strings"
 )
 
 func main() {
-        log.SetOutput(os.Stdout)
+	log.SetOutput(os.Stdout)
 
 	// get args
 	serverIP := flag.String("server", "localhost", "server IP")
 	serverPort := flag.Int("port", 3131, "server port")
-	defaultMidiPort := 1 // flag does not print default value on 0 int
-	midiPort := flag.Int("midi", defaultMidiPort, "midi port (default "+strconv.Itoa(defaultMidiPort)+")")
+	midiPort := flag.Int("midi", 1, "midi port")
 	list := flag.Bool("list", false, "list available ports")
 	mode := flag.String("mode", "local", "client, server, or local (runs both)")
 	protocol := flag.String("protocol", "tcp", "tcp only (udp not implemented yet)")

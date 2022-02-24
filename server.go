@@ -15,7 +15,7 @@ import (
 
 func startHTTP(notesChan chan interface{}) {
 	// serve the website
-	http.Handle("/", http.FileServer(http.Dir("./gui/build")))
+	http.Handle("/", http.FileServer(http.Dir("./gui/dist")))
 	//serve favicon
 	http.Handle("/favicon.ico", http.FileServer(http.Dir("./gui/build/favicon.ico")))
 	// serve /api
