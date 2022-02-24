@@ -18,7 +18,7 @@ func main() {
 	list := flag.Bool("list", false, "list available ports")
 	mode := flag.String("mode", "local", "client, server, or local (runs both)")
 	protocol := flag.String("protocol", "tcp", "tcp only (udp not implemented yet)")
-	profile := flag.String("profile", "profiles/wosp", "profiles path")
+	profile := flag.String("profile", "profiles/wosp/", "profiles path")
 	stdinMode := flag.Bool("stdin", false, "read from stdin")
 	delay := flag.Int("delay", 0, "artificial delay in ms")
 	file := flag.String("file", "", "midi file to play")
