@@ -6,8 +6,8 @@ import (
 	"strconv"
 )
 
-func readCSV() []MidiCSVRecord {
-	f, err := os.Open("config.csv")
+func readChannelsFile(filename string) []MidiCSVRecord {
+	f, err := os.Open(filename)
 	must(err)
 	csvReader := csv.NewReader(f)
 	data, err := csvReader.ReadAll()
@@ -42,20 +42,17 @@ func readCSV() []MidiCSVRecord {
 	return csvRecords
 }
 
-func csvCheckChannel(channel uint8, csvRecords []MidiCSVRecord) uint8 {
+func channelsFileCheckChannel(channel uint8, csvRecords []MidiCSVRecord) uint8 {
 	ret := channel
 	for _, msg := range csvRecords {
 		if msg.InputChannel == channel {
 			ret = msg.OutputChannel
 		}
 	}
-	// if ret == 255 {
-	// 	log.Println("I'm blackholing channel", channel)
-	// }
 	return ret
 }
 
-func csvCheckOffset(channel uint8, note uint8, csvRecords []MidiCSVRecord) uint8 {
+func channelsFileCheckOffset(channel uint8, note uint8, csvRecords []MidiCSVRecord) uint8 {
 	ret := int(note)
 	for _, msg := range csvRecords {
 		if msg.InputChannel == channel {

@@ -28,10 +28,10 @@ func dial(serverIP string, serverPort int, protocol string) net.Conn {
 	return conn
 }
 
-func client(midiPort int, serverIP string, serverPort int, protocol string, stdinMode bool, delay int, file string, midiTuxChan chan MidiTuxMessage) {
+func client(midiPort int, serverIP string, serverPort int, protocol string, stdinMode bool, delay int, file string, midiTuxChan chan MidiTuxMessage, profile string) {
 
 	// read the csv
-	csvRecords := readCSV()
+	csvRecords := readChannelsFile(profile + "channels.csv")
 
 	notesChan := make(chan interface{})
 
@@ -158,8 +158,8 @@ func sendNotesClient(serverIP string, serverPort int, protocol string, delay int
 				// this is just so we can deal with a single known struct with exposed fields
 				switch v := msg.(type) {
 				case channel.NoteOn:
-					channel := csvCheckChannel(v.Channel(), csvRecords)
-					key := csvCheckOffset(v.Channel(), v.Key(), csvRecords)
+					channel := channelsFileCheckChannel(v.Channel(), csvRecords)
+					key := channelsFileCheckOffset(v.Channel(), v.Key(), csvRecords)
 					if channel != 255 {
 						err := encoder.Encode(TCPMessage{Body: NoteOn{
 							Time:     time.Now(),
@@ -175,8 +175,8 @@ func sendNotesClient(serverIP string, serverPort int, protocol string, delay int
 						}
 					}
 				case channel.NoteOff:
-					channel := csvCheckChannel(v.Channel(), csvRecords)
-					key := csvCheckOffset(v.Channel(), v.Key(), csvRecords)
+					channel := channelsFileCheckChannel(v.Channel(), csvRecords)
+					key := channelsFileCheckOffset(v.Channel(), v.Key(), csvRecords)
 					if channel != 255 {
 						err := encoder.Encode(TCPMessage{Body: NoteOff{
 							Time:    time.Now(),
@@ -190,7 +190,7 @@ func sendNotesClient(serverIP string, serverPort int, protocol string, delay int
 						}
 					}
 				case channel.ProgramChange:
-					channel := csvCheckChannel(v.Channel(), csvRecords)
+					channel := channelsFileCheckChannel(v.Channel(), csvRecords)
 					if channel != 255 {
 						err := encoder.Encode(TCPMessage{Body: ProgramChange{
 							Time:    time.Now(),
@@ -204,7 +204,7 @@ func sendNotesClient(serverIP string, serverPort int, protocol string, delay int
 						}
 					}
 				case channel.Aftertouch:
-					channel := csvCheckChannel(v.Channel(), csvRecords)
+					channel := channelsFileCheckChannel(v.Channel(), csvRecords)
 					if channel != 255 {
 						err := encoder.Encode(TCPMessage{Body: Aftertouch{
 							Time:     time.Now(),
@@ -219,7 +219,7 @@ func sendNotesClient(serverIP string, serverPort int, protocol string, delay int
 					}
 
 				case channel.ControlChange:
-					channel := csvCheckChannel(v.Channel(), csvRecords)
+					channel := channelsFileCheckChannel(v.Channel(), csvRecords)
 					if channel != 255 {
 						err := encoder.Encode(TCPMessage{Body: ControlChange{
 							Time:       time.Now(),
@@ -234,8 +234,8 @@ func sendNotesClient(serverIP string, serverPort int, protocol string, delay int
 						}
 					}
 				case channel.NoteOffVelocity:
-					channel := csvCheckChannel(v.Channel(), csvRecords)
-					key := csvCheckOffset(v.Channel(), v.Key(), csvRecords)
+					channel := channelsFileCheckChannel(v.Channel(), csvRecords)
+					key := channelsFileCheckOffset(v.Channel(), v.Key(), csvRecords)
 					if channel != 255 {
 						err := encoder.Encode(TCPMessage{Body: NoteOffVelocity{
 							Time:     time.Now(),
@@ -250,7 +250,7 @@ func sendNotesClient(serverIP string, serverPort int, protocol string, delay int
 						}
 					}
 				case channel.Pitchbend:
-					channel := csvCheckChannel(v.Channel(), csvRecords)
+					channel := channelsFileCheckChannel(v.Channel(), csvRecords)
 					if channel != 255 {
 						err := encoder.Encode(TCPMessage{Body: Pitchbend{
 							Time:     time.Now(),
@@ -265,8 +265,8 @@ func sendNotesClient(serverIP string, serverPort int, protocol string, delay int
 						}
 					}
 				case channel.PolyAftertouch:
-					channel := csvCheckChannel(v.Channel(), csvRecords)
-					key := csvCheckOffset(v.Channel(), v.Key(), csvRecords)
+					channel := channelsFileCheckChannel(v.Channel(), csvRecords)
+					key := channelsFileCheckOffset(v.Channel(), v.Key(), csvRecords)
 					if channel != 255 {
 						err := encoder.Encode(TCPMessage{Body: PolyAftertouch{
 							Time:     time.Now(),

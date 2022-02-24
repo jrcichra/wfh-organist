@@ -18,6 +18,7 @@ func main() {
 	list := flag.Bool("list", false, "list available ports")
 	mode := flag.String("mode", "local", "client, server, or local (runs both)")
 	protocol := flag.String("protocol", "tcp", "tcp only (udp not implemented yet)")
+	profile := flag.String("profile", "profiles/wosp", "profiles path")
 	stdinMode := flag.Bool("stdin", false, "read from stdin")
 	delay := flag.Int("delay", 0, "artificial delay in ms")
 	file := flag.String("file", "", "midi file to play")
@@ -62,13 +63,13 @@ func main() {
 	case "server":
 		go server(*midiPort, *serverPort, *protocol, midiTuxChan)
 	case "client":
-		go client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay, *file, midiTuxChan)
+		go client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay, *file, midiTuxChan, *profile)
 	case "local":
 		// run both (unless serverIP is set, and sleep forever
 		if *serverIP == "localhost" {
 			go server(*midiPort, *serverPort, *protocol, midiTuxChan)
 		}
-		go client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay, *file, midiTuxChan)
+		go client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay, *file, midiTuxChan, *profile)
 	default:
 		log.Fatalf("Unknown mode: %s. Must be 'server' or 'client'\n", *mode)
 	}
