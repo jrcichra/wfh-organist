@@ -34,13 +34,13 @@ func Server(midiPort int, serverPort int, protocol string, midiTuxChan chan type
 	common.Must(err)
 	defer l.Close()
 
-	//send notes listening to a go channel
-	notesChan := make(chan interface{})
-	go sendNotes(midiPort, notesChan, midiTuxChan)
-
-	// send notes back to the client too
+	// send notes back to the client
 	feedbackChan := make(chan interface{})
 	go feedbackNotes(feedbackChan)
+
+	//send notes listening to a go channel
+	notesChan := make(chan interface{})
+	go sendNotes(midiPort, notesChan, midiTuxChan, feedbackChan)
 
 	// also can accept notes from the HTTP API
 	go startHTTP(notesChan)
@@ -67,8 +67,6 @@ func Server(midiPort int, serverPort int, protocol string, midiTuxChan chan type
 				common.Must(err)
 				// send through the channel
 				notesChan <- t.Body
-				// send back through to the client
-				feedbackChan <- t.Body
 			}
 		}()
 	}
@@ -106,7 +104,7 @@ func feedbackNotes(feedbackChan chan interface{}) {
 	}
 }
 
-func sendNotes(midiPort int, notesChan chan interface{}, midiTuxChan chan types.MidiTuxMessage) {
+func sendNotes(midiPort int, notesChan chan interface{}, midiTuxChan chan types.MidiTuxMessage, feedbackChan chan interface{}) {
 
 	drv, err := driver.New()
 	common.Must(err)
@@ -134,6 +132,8 @@ func sendNotes(midiPort int, notesChan chan interface{}, midiTuxChan chan types.
 
 	for {
 		input := <-notesChan
+		// send it out the feedback
+		feedbackChan <- input
 		// determine the type of message
 		switch m := input.(type) {
 		case types.NoteOn:
