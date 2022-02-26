@@ -40,32 +40,38 @@ func PlayMidiFile(notesChan chan interface{}, file string, stop chan struct{}, w
 			switch v := m.(type) {
 			case channel.NoteOn:
 				if wrap {
-					notesChan <- types.TCPMessage{
-						Body: v,
+					notesChan <- types.NoteOn{
+						Channel:  v.Channel(),
+						Key:      v.Key(),
+						Velocity: v.Velocity(),
 					}
 				} else {
 					notesChan <- v
 				}
 			case channel.NoteOff:
 				if wrap {
-					notesChan <- types.TCPMessage{
-						Body: v,
+					notesChan <- types.NoteOff{
+						Channel: v.Channel(),
+						Key:     v.Key(),
 					}
 				} else {
 					notesChan <- v
 				}
 			case channel.ProgramChange:
 				if wrap {
-					notesChan <- types.TCPMessage{
-						Body: v,
+					notesChan <- types.ProgramChange{
+						Channel: v.Channel(),
+						Program: v.Program(),
 					}
 				} else {
 					notesChan <- v
 				}
 			case channel.ControlChange:
 				if wrap {
-					notesChan <- types.TCPMessage{
-						Body: v,
+					notesChan <- types.ControlChange{
+						Channel:    v.Channel(),
+						Controller: v.Controller(),
+						Value:      v.Value(),
 					}
 				} else {
 					notesChan <- v
