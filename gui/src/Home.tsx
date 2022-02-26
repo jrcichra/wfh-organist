@@ -7,6 +7,8 @@ import Piston from './components/Piston';
 import RockerTab from './components/RockerTab';
 import './Home.css';
 import Video from './components/Video';
+import Play from './components/Play';
+import Stop from './components/Stop';
 
 const audioOptions: MediaTrackConstraints = {
   autoGainControl: false,
@@ -36,6 +38,8 @@ function Home() {
   const [localStream, setLocalStream]: [any, any] = useState(null);
   const [remoteStream, setRemoteStream]: [any, any] = useState(null);
 
+  const [midiFile, setMidiFile]: [any, any] = useState('');
+  const [midiFiles, setMidiFiles]: [any, any] = useState([]);
   useEffect(() => {
 
     if (new URLSearchParams(location.search).get("mode") === 'server') {
@@ -74,6 +78,12 @@ function Home() {
         });
       })();
     });
+
+    // get the list of midi files
+    fetch('/api/midi/files').then(res => res.json()).then(data => {
+      setMidiFiles(data);
+    }
+    );
 
   }, []);
 
@@ -129,6 +139,14 @@ function Home() {
           <span className="pistonGap"></span>
           <span className="pistonGap"></span>
           <Panic data="b0 7b 00 b1 7b 00 b2 7b 00" />
+          {midiFiles.map((file: string) => (
+            <>
+              <input id={file} type="radio" name="midiFile" value={file} onClick={(e) => setMidiFile(e.currentTarget.value)} />
+              <label htmlFor={file}>{file}</label>
+            </>
+          ))}
+          <Play midiFile={midiFile} />
+          <Stop />
         </div>
         <p className="title">Pedal Organ</p>
         <div className="col">

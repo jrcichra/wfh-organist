@@ -39,6 +39,7 @@ func Client(midiPort int, serverIP string, serverPort int, protocol string, stdi
 	csvRecords := channels.ReadFile(profile + "channels.csv")
 
 	notesChan := make(chan interface{})
+	stopChan := make(chan struct{})
 
 	drv, err := driver.New()
 	common.Must(err)
@@ -64,7 +65,7 @@ func Client(midiPort int, serverIP string, serverPort int, protocol string, stdi
 
 	common.Must(out.Open())
 
-	common.SetupCloseHandler(out)
+	common.SetupCloseHandler(out, stopChan)
 
 	// make a writer for each channel
 	writers := make([]*writer.Writer, 16)
@@ -88,7 +89,7 @@ func Client(midiPort int, serverIP string, serverPort int, protocol string, stdi
 		case true:
 			midiClient(midiPort, delay, notesChan, in)
 		default:
-			player.PlayMidiFile(notesChan, file)
+			player.PlayMidiFile(notesChan, file, stopChan)
 		}
 	}
 }

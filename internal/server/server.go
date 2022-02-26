@@ -21,7 +21,7 @@ func startHTTP(notesChan chan interface{}) {
 	//serve favicon
 	http.Handle("/favicon.ico", http.FileServer(http.Dir("./gui/build/favicon.ico")))
 	// serve /api
-	http.Handle("/api/midi/raw", handleAPI(notesChan))
+	http.Handle("/api/midi/", handleAPI(notesChan))
 	// http listener
 	log.Println("HTTP Listening on 8080")
 	http.ListenAndServe(":8080", nil)

@@ -1,0 +1,23 @@
+.playButton {
+    padding: 2rem 0rem;
+    width: 3.5rem;
+    height: 2rem;
+    font-size: 1rem;
+    text-align: center;
+    cursor: pointer;
+    outline: solid;
+    color: #000000;
+    background-color: #0ca013;
+    border: none;
+    border-radius: 2rem;
+    box-shadow: 0 .4rem rgb(129, 129, 129);
+    margin: -.3rem .3rem;
+  }
+
+  .playButton:hover {background-color: #0ca013}
+
+.playButton:active {
+  background-color: #0ca013;
+  box-shadow: 0 0px rgb(129, 129, 129);
+  transform: translateY(4px);
+}

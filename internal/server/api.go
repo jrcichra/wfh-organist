@@ -3,10 +3,13 @@ package server
 import (
 	"bufio"
 	"encoding/hex"
+	"encoding/json"
 	"log"
 	"net/http"
+	"path/filepath"
 	"time"
 
+	"github.com/jrcichra/wfh-organist/internal/player"
 	"github.com/jrcichra/wfh-organist/internal/types"
 )
 
@@ -33,10 +36,66 @@ func handleAPI(notesChan chan interface{}) http.Handler {
 		// 	apiHandlePolyAfterTouch(w, r)
 		case "/api/midi/raw":
 			apiHandleRaw(w, r, notesChan)
+		case "/api/midi/files":
+			apiHandleStat(w, r)
+		case "/api/midi/file/play":
+			apiHandlePlay(w, r, notesChan)
+		case "/api/midi/file/stop":
+			apiHandleStop(w, r, notesChan)
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
 	})
+}
+
+var stopPlayingChan = make(chan struct{})
+
+func apiHandleStat(w http.ResponseWriter, r *http.Request) {
+	// get a list of midi files in the midi directory
+	log.Println("Getting list of midi files")
+	matches, err := filepath.Glob("midi/*")
+	if err != nil {
+		log.Println(err)
+	}
+
+	// only get the basenames
+	files := make([]string, len(matches))
+	for i, match := range matches {
+		files[i] = filepath.Base(match)
+	}
+
+	// send the list of files in JSON
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(files)
+}
+
+func apiHandleStop(w http.ResponseWriter, r *http.Request, notesChan chan interface{}) {
+	select {
+	case stopPlayingChan <- struct{}{}:
+		w.WriteHeader(http.StatusOK)
+	default:
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+}
+
+func apiHandlePlay(w http.ResponseWriter, r *http.Request, notesChan chan interface{}) {
+	// make sure it's a post
+	if r.Method != "POST" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	// get the filename from the body
+	scanner := bufio.NewScanner(r.Body)
+	scanner.Split(bufio.ScanWords)
+	if !scanner.Scan() {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	filename := scanner.Text()
+	// start a player that opens the filename specified
+	go player.PlayMidiFile(notesChan, filename, stopPlayingChan)
+	// send a success message
+	w.WriteHeader(http.StatusOK)
 }
 
 func apiHandleRaw(w http.ResponseWriter, r *http.Request, notesChan chan interface{}) {
