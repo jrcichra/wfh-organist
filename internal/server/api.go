@@ -72,6 +72,12 @@ func apiHandleStat(w http.ResponseWriter, r *http.Request) {
 func apiHandleStop(w http.ResponseWriter, r *http.Request, notesChan chan interface{}) {
 	select {
 	case stopPlayingChan <- struct{}{}:
+		time.Sleep(time.Millisecond * 500)
+		// send all notes off
+		notesChan <- types.Raw{
+			Time: time.Now(),
+			Data: []byte{0xB0, 0x7B, 0x00},
+		}
 		w.WriteHeader(http.StatusOK)
 	default:
 		w.WriteHeader(http.StatusInternalServerError)
