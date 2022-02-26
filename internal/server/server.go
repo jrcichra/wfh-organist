@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/fatih/color"
+	"github.com/google/uuid"
 	"github.com/jrcichra/wfh-organist/internal/common"
 	"github.com/jrcichra/wfh-organist/internal/types"
 	"gitlab.com/gomidi/midi/writer"
@@ -78,6 +79,27 @@ func feedbackNotes(feedbackChan chan interface{}) {
 	l, err := net.Listen("tcp", ":3132")
 	common.Must(err)
 	defer l.Close()
+	clients := make(map[string]net.Conn)
+	encoders := make(map[string]*gob.Encoder)
+
+	go func() {
+		// get notes from the feedback chan and send them to every client we know about
+		for note := range feedbackChan {
+			for name, e := range encoders {
+				err := e.Encode(types.TCPMessage{Body: note})
+				if err != nil {
+					log.Println(err)
+					// If there was an error, close the connection and remove the client from the maps
+					err := clients[name].Close()
+					common.Cont(err)
+					delete(clients, name)
+					delete(encoders, name)
+					return
+				}
+			}
+		}
+	}()
+
 	for {
 		log.Println("Feedback Listening on", l.Addr())
 		// accept user
@@ -86,17 +108,23 @@ func feedbackNotes(feedbackChan chan interface{}) {
 		log.Println("Feedback connection from:", c.RemoteAddr())
 		go func() {
 			encoder := gob.NewEncoder(c)
+			// add the client to the maps
+			id := uuid.New().String()
+			clients[id] = c
+			encoders[id] = encoder
 			for {
 				note := <-feedbackChan
 				if note == nil {
 					log.Println("Feedback connection closed by client.")
-					c.Close()
+					err := c.Close()
+					common.Cont(err)
 					return
 				}
 				err := encoder.Encode(types.TCPMessage{Body: note})
 				if err != nil {
 					log.Println(err)
-					c.Close()
+					err := c.Close()
+					common.Cont(err)
 					return
 				}
 			}
@@ -132,8 +160,11 @@ func sendNotes(midiPort int, notesChan chan interface{}, midiTuxChan chan types.
 
 	for {
 		input := <-notesChan
-		// send it out the feedback
-		feedbackChan <- input
+		// send it out the feedback if someones there
+		select {
+		case feedbackChan <- input:
+		default:
+		}
 		// determine the type of message
 		switch m := input.(type) {
 		case types.NoteOn:
