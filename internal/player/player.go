@@ -13,10 +13,10 @@ import (
 )
 
 // https://pkg.go.dev/gitlab.com/gomidi/midi/player#Player
-func PlayMidiFile(notesChan chan interface{}, file string, stop chan struct{}, wrap bool) {
+func PlayMidiFile(notesChan chan interface{}, file string, stopPlayingChan chan struct{}, wrap bool) {
 
 	log.Println("Playing midi file:", file)
-	stopPlayChan := make(chan struct{})
+	stopRoutine := make(chan struct{})
 	stopBool := false
 	player, err := player.SMF(file)
 	if err != nil {
@@ -25,10 +25,10 @@ func PlayMidiFile(notesChan chan interface{}, file string, stop chan struct{}, w
 	}
 	go func() {
 		// wait for when we should stop
-		<-stop
-		stopPlayChan <- struct{}{} // this frees up the player resources
+		<-stopPlayingChan
 		// these GetMessages might still be around so we need to update a bool to not sound them and finish the file
 		stopBool = true
+		stopRoutine <- struct{}{} // this frees up the player resources
 	}()
 
 	player.GetMessages(func(wait time.Duration, m midi.Message, track int16) {
@@ -80,5 +80,5 @@ func PlayMidiFile(notesChan chan interface{}, file string, stop chan struct{}, w
 		}
 	})
 	// sleep until asked to stop
-	<-stopPlayChan
+	<-stopRoutine
 }
