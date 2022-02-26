@@ -23,16 +23,16 @@ func PlayMidiFile(notesChan chan interface{}, file string, stop chan struct{}, w
 		log.Println(err)
 		return
 	}
+	go func() {
+		// wait for when we should stop
+		<-stop
+		stopPlayChan <- struct{}{} // this frees up the player resources
+		// these GetMessages might still be around so we need to update a bool to not sound them and finish the file
+		stopBool = true
+	}()
+
 	player.GetMessages(func(wait time.Duration, m midi.Message, track int16) {
 
-		// check if we should stop
-		select {
-		case <-stop:
-			stopPlayChan <- struct{}{} // this frees up the player resources
-			// these GetMessages might still be around so we need to update a bool to not sound them and finish the file
-			stopBool = true
-		default:
-		}
 		if !stopBool {
 			// sleep for the wait amount
 			time.Sleep(wait)

@@ -84,6 +84,13 @@ func apiHandlePlay(w http.ResponseWriter, r *http.Request, notesChan chan interf
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
+
+	// stop anything in progress
+	select {
+	case stopPlayingChan <- struct{}{}:
+	default:
+	}
+
 	// get the filename from the body
 	scanner := bufio.NewScanner(r.Body)
 	scanner.Split(bufio.ScanWords)
