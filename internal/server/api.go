@@ -93,7 +93,7 @@ func apiHandlePlay(w http.ResponseWriter, r *http.Request, notesChan chan interf
 	}
 	filename := scanner.Text()
 	// start a player that opens the filename specified
-	go player.PlayMidiFile(notesChan, "midi/"+filename, stopPlayingChan)
+	go player.PlayMidiFile(notesChan, "midi/"+filename, stopPlayingChan, true)
 	// send a success message
 	w.WriteHeader(http.StatusOK)
 }

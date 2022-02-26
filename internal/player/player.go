@@ -6,13 +6,14 @@ import (
 	"log"
 	"time"
 
+	"github.com/jrcichra/wfh-organist/internal/types"
 	"gitlab.com/gomidi/midi"
 	"gitlab.com/gomidi/midi/midimessage/channel"
 	"gitlab.com/gomidi/midi/player"
 )
 
 // https://pkg.go.dev/gitlab.com/gomidi/midi/player#Player
-func PlayMidiFile(notesChan chan interface{}, file string, stop chan struct{}) {
+func PlayMidiFile(notesChan chan interface{}, file string, stop chan struct{}, wrap bool) {
 
 	log.Println("Playing midi file:", file)
 	stopPlayChan := make(chan struct{})
@@ -38,13 +39,37 @@ func PlayMidiFile(notesChan chan interface{}, file string, stop chan struct{}) {
 			// send the message to the channel if it's a noteon or noteoff
 			switch v := m.(type) {
 			case channel.NoteOn:
-				notesChan <- v
+				if wrap {
+					notesChan <- types.TCPMessage{
+						Body: v,
+					}
+				} else {
+					notesChan <- v
+				}
 			case channel.NoteOff:
-				notesChan <- v
+				if wrap {
+					notesChan <- types.TCPMessage{
+						Body: v,
+					}
+				} else {
+					notesChan <- v
+				}
 			case channel.ProgramChange:
-				notesChan <- v
+				if wrap {
+					notesChan <- types.TCPMessage{
+						Body: v,
+					}
+				} else {
+					notesChan <- v
+				}
 			case channel.ControlChange:
-				notesChan <- v
+				if wrap {
+					notesChan <- types.TCPMessage{
+						Body: v,
+					}
+				} else {
+					notesChan <- v
+				}
 			}
 		}
 	})

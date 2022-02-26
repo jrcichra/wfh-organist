@@ -89,7 +89,7 @@ func Client(midiPort int, serverIP string, serverPort int, protocol string, stdi
 		case true:
 			midiClient(midiPort, delay, notesChan, in)
 		default:
-			player.PlayMidiFile(notesChan, file, stopChan)
+			player.PlayMidiFile(notesChan, file, stopChan, false)
 		}
 	}
 }
