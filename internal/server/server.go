@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"encoding/gob"
@@ -9,6 +9,8 @@ import (
 	"strconv"
 
 	"github.com/fatih/color"
+	"github.com/jrcichra/wfh-organist/internal/common"
+	"github.com/jrcichra/wfh-organist/internal/types"
 	"gitlab.com/gomidi/midi/writer"
 	driver "gitlab.com/gomidi/rtmididrv"
 )
@@ -25,11 +27,11 @@ func startHTTP(notesChan chan interface{}) {
 	http.ListenAndServe(":8080", nil)
 }
 
-func server(midiPort int, serverPort int, protocol string, midiTuxChan chan MidiTuxMessage) {
+func Server(midiPort int, serverPort int, protocol string, midiTuxChan chan types.MidiTuxMessage) {
 
 	// wait for someone to connect to the server
 	l, err := net.Listen(protocol, ":"+strconv.Itoa(serverPort))
-	must(err)
+	common.Must(err)
 	defer l.Close()
 
 	//send notes listening to a go channel
@@ -47,14 +49,14 @@ func server(midiPort int, serverPort int, protocol string, midiTuxChan chan Midi
 	for {
 		log.Println("Notes listening on", l.Addr())
 		c, err := l.Accept()
-		must(err)
+		common.Must(err)
 		log.Println("Notes connection from:", c.RemoteAddr())
 		log.Println("Ready to play music!")
 
 		go func() {
 			dec := gob.NewDecoder(c)
 			for {
-				var t TCPMessage
+				var t types.TCPMessage
 				err := dec.Decode(&t)
 				if err == io.EOF {
 					log.Println("Connection closed by client.")
@@ -62,7 +64,7 @@ func server(midiPort int, serverPort int, protocol string, midiTuxChan chan Midi
 					c.Close()
 					return
 				}
-				must(err)
+				common.Must(err)
 				// send through the channel
 				notesChan <- t.Body
 				// send back through to the client
@@ -76,13 +78,13 @@ func server(midiPort int, serverPort int, protocol string, midiTuxChan chan Midi
 func feedbackNotes(feedbackChan chan interface{}) {
 	// listen for clients on 3132
 	l, err := net.Listen("tcp", ":3132")
-	must(err)
+	common.Must(err)
 	defer l.Close()
 	for {
 		log.Println("Feedback Listening on", l.Addr())
 		// accept user
 		c, err := l.Accept()
-		must(err)
+		common.Must(err)
 		log.Println("Feedback connection from:", c.RemoteAddr())
 		go func() {
 			encoder := gob.NewEncoder(c)
@@ -93,7 +95,7 @@ func feedbackNotes(feedbackChan chan interface{}) {
 					c.Close()
 					return
 				}
-				err := encoder.Encode(TCPMessage{Body: note})
+				err := encoder.Encode(types.TCPMessage{Body: note})
 				if err != nil {
 					log.Println(err)
 					c.Close()
@@ -104,15 +106,15 @@ func feedbackNotes(feedbackChan chan interface{}) {
 	}
 }
 
-func sendNotes(midiPort int, notesChan chan interface{}, midiTuxChan chan MidiTuxMessage) {
+func sendNotes(midiPort int, notesChan chan interface{}, midiTuxChan chan types.MidiTuxMessage) {
 
 	drv, err := driver.New()
-	must(err)
+	common.Must(err)
 	// make sure to close all open ports at the end
 	defer drv.Close()
 
 	outs, err := drv.Outs()
-	must(err)
+	common.Must(err)
 
 	if len(outs)-1 < midiPort {
 		log.Printf("Too few MIDI OUT Ports found. Wanted Index: %d. Max Index: %d\n", midiPort, len(outs)-1)
@@ -120,7 +122,7 @@ func sendNotes(midiPort int, notesChan chan interface{}, midiTuxChan chan MidiTu
 	}
 	out := outs[midiPort]
 
-	must(out.Open())
+	common.Must(out.Open())
 
 	// make a writer for each channel
 	writers := make([]*writer.Writer, 16)
@@ -134,82 +136,86 @@ func sendNotes(midiPort int, notesChan chan interface{}, midiTuxChan chan MidiTu
 		input := <-notesChan
 		// determine the type of message
 		switch m := input.(type) {
-		case NoteOn:
-			ms := handleMs(m.Time)
-			cont(writer.NoteOn(writers[m.Channel], m.Key, m.Velocity))
-			midiTuxChan <- MidiTuxMessage{
+		case types.NoteOn:
+			ms := common.HandleMs(m.Time)
+			common.Cont(writer.NoteOn(writers[m.Channel], m.Key, m.Velocity))
+			midiTuxChan <- types.MidiTuxMessage{
 				Color: color.FgHiGreen,
 				T:     m,
 				Ms:    ms,
 			}
-		case NoteOff:
-			ms := handleMs(m.Time)
-			cont(writer.NoteOff(writers[m.Channel], m.Key))
-			midiTuxChan <- MidiTuxMessage{
+		case types.NoteOff:
+			ms := common.HandleMs(m.Time)
+			common.Cont(writer.NoteOff(writers[m.Channel], m.Key))
+			midiTuxChan <- types.MidiTuxMessage{
 				Color: color.FgHiRed,
 				T:     m,
 				Ms:    ms,
 			}
-		case ProgramChange:
-			ms := handleMs(m.Time)
-			cont(writer.ProgramChange(writers[m.Channel], m.Program))
-			midiTuxChan <- MidiTuxMessage{
+		case types.ProgramChange:
+			ms := common.HandleMs(m.Time)
+			common.Cont(writer.ProgramChange(writers[m.Channel], m.Program))
+			midiTuxChan <- types.MidiTuxMessage{
 				Color: color.FgHiYellow,
 				T:     m,
 				Ms:    ms,
 			}
-		case Aftertouch:
-			ms := handleMs(m.Time)
-			cont(writer.Aftertouch(writers[m.Channel], m.Pressure))
-			midiTuxChan <- MidiTuxMessage{
+		case types.Aftertouch:
+			ms := common.HandleMs(m.Time)
+			common.Cont(writer.Aftertouch(writers[m.Channel], m.Pressure))
+			midiTuxChan <- types.MidiTuxMessage{
 				Color: color.FgHiBlue,
 				T:     m,
 				Ms:    ms,
 			}
-		case ControlChange:
-			ms := handleMs(m.Time)
-			cont(writer.ControlChange(writers[m.Channel], m.Controller, m.Value))
-			midiTuxChan <- MidiTuxMessage{
+		case types.ControlChange:
+			ms := common.HandleMs(m.Time)
+			common.Cont(writer.ControlChange(writers[m.Channel], m.Controller, m.Value))
+			midiTuxChan <- types.MidiTuxMessage{
 				Color: color.FgHiMagenta,
 				T:     m,
 				Ms:    ms,
 			}
-		case NoteOffVelocity:
-			ms := handleMs(m.Time)
-			cont(writer.NoteOffVelocity(writers[m.Channel], m.Key, m.Velocity))
-			midiTuxChan <- MidiTuxMessage{
+		case types.NoteOffVelocity:
+			ms := common.HandleMs(m.Time)
+			common.Cont(writer.NoteOffVelocity(writers[m.Channel], m.Key, m.Velocity))
+			midiTuxChan <- types.MidiTuxMessage{
 				Color: color.FgYellow,
 				T:     m,
 				Ms:    ms,
 			}
-		case Pitchbend:
-			ms := handleMs(m.Time)
-			cont(writer.Pitchbend(writers[m.Channel], m.Value))
-			midiTuxChan <- MidiTuxMessage{
+		case types.Pitchbend:
+			ms := common.HandleMs(m.Time)
+			common.Cont(writer.Pitchbend(writers[m.Channel], m.Value))
+			midiTuxChan <- types.MidiTuxMessage{
 				Color: color.FgMagenta,
 				T:     m,
 				Ms:    ms,
 			}
-		case PolyAftertouch:
-			ms := handleMs(m.Time)
-			cont(writer.PolyAftertouch(writers[m.Channel], m.Key, m.Pressure))
-			midiTuxChan <- MidiTuxMessage{
+		case types.PolyAftertouch:
+			ms := common.HandleMs(m.Time)
+			common.Cont(writer.PolyAftertouch(writers[m.Channel], m.Key, m.Pressure))
+			midiTuxChan <- types.MidiTuxMessage{
 				Color: color.FgCyan,
 				T:     m,
 				Ms:    ms,
 			}
-		case Raw:
-			ms := handleMs(m.Time)
-			midiTuxPrint(color.FgBlue, m, ms)
-			if checkAllNotesOff(m.Data) {
+		case types.Raw:
+			ms := common.HandleMs(m.Time)
+			midiTuxChan <- types.MidiTuxMessage{
+				Color: color.FgBlue,
+				T:     m,
+				Ms:    ms,
+			}
+			if common.CheckAllNotesOff(m.Data) {
 				// all notes off expansion
-				expandAllNotesOff(m, ms, midiTuxChan, out)
+				common.ExpandAllNotesOff(m, ms, midiTuxChan, out)
 			} else {
 				// write the raw bytes to the MIDI device
 				_, err := out.Write(m.Data)
-				cont(err)
+				common.Cont(err)
 			}
-			midiTuxChan <- MidiTuxMessage{
+			midiTuxChan <- types.MidiTuxMessage{
 				Color: color.FgBlue,
 				T:     m,
 				Ms:    ms,

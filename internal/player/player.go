@@ -1,6 +1,6 @@
 // play midi files
 
-package main
+package player
 
 import (
 	"log"
@@ -12,7 +12,7 @@ import (
 )
 
 // https://pkg.go.dev/gitlab.com/gomidi/midi/player#Player
-func playMidiFile(notesChan chan interface{}, file string) {
+func PlayMidiFile(notesChan chan interface{}, file string) {
 
 	log.Println("Playing midi file:", file)
 

@@ -1,4 +1,4 @@
-package main
+package client
 
 import (
 	"bufio"
@@ -12,6 +12,11 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/jrcichra/wfh-organist/internal/common"
+	"github.com/jrcichra/wfh-organist/internal/parser/channels"
+	"github.com/jrcichra/wfh-organist/internal/player"
+	"github.com/jrcichra/wfh-organist/internal/serial"
+	"github.com/jrcichra/wfh-organist/internal/types"
 	"gitlab.com/gomidi/midi"
 	"gitlab.com/gomidi/midi/midimessage/channel"
 	"gitlab.com/gomidi/midi/reader"
@@ -23,26 +28,26 @@ func dial(serverIP string, serverPort int, protocol string) net.Conn {
 	serverStr := fmt.Sprintf("%s:%d", serverIP, serverPort)
 	log.Println("Connecting to " + serverStr + "...")
 	conn, err := net.Dial(protocol, serverStr)
-	must(err)
+	common.Must(err)
 	log.Println("Connected to", serverStr)
 	return conn
 }
 
-func client(midiPort int, serverIP string, serverPort int, protocol string, stdinMode bool, delay int, file string, midiTuxChan chan MidiTuxMessage, profile string) {
+func Client(midiPort int, serverIP string, serverPort int, protocol string, stdinMode bool, delay int, file string, midiTuxChan chan types.MidiTuxMessage, profile string) {
 
 	// read the csv
-	csvRecords := readChannelsFile(profile + "channels.csv")
+	csvRecords := channels.ReadFile(profile + "channels.csv")
 
 	notesChan := make(chan interface{})
 
 	drv, err := driver.New()
-	must(err)
+	common.Must(err)
 
 	// make sure to close all open ports at the end
 	defer drv.Close()
 
 	ins, err := drv.Ins()
-	must(err)
+	common.Must(err)
 
 	if len(ins)-1 < midiPort {
 		log.Printf("Too few MIDI IN Ports found. Wanted Index: %d. Max Index: %d\n", midiPort, len(ins)-1)
@@ -50,16 +55,16 @@ func client(midiPort int, serverIP string, serverPort int, protocol string, stdi
 	}
 	in := ins[midiPort]
 
-	must(in.Open())
+	common.Must(in.Open())
 
 	outs, err := drv.Outs()
-	must(err)
+	common.Must(err)
 
 	out := outs[midiPort]
 
-	must(out.Open())
+	common.Must(out.Open())
 
-	SetupCloseHandler(out)
+	common.SetupCloseHandler(out)
 
 	// make a writer for each channel
 	writers := make([]*writer.Writer, 16)
@@ -70,7 +75,7 @@ func client(midiPort int, serverIP string, serverPort int, protocol string, stdi
 	}
 
 	// in either mode read the serial for now
-	go readSerial(notesChan)
+	go serial.ReadSerial(notesChan)
 	// ability to send notes
 	go sendNotesClient(serverIP, serverPort, protocol, delay, notesChan, csvRecords)
 	// ability to get your own notes back
@@ -83,14 +88,14 @@ func client(midiPort int, serverIP string, serverPort int, protocol string, stdi
 		case true:
 			midiClient(midiPort, delay, notesChan, in)
 		default:
-			playMidiFile(notesChan, file)
+			player.PlayMidiFile(notesChan, file)
 		}
 	}
 }
 
 func stdinClient(serverIP string, serverPort int, protocol string, notesChan chan interface{}) {
 
-	channel := make(chan Raw)
+	channel := make(chan types.Raw)
 
 	//get stdin in a goroutine
 	go func() {
@@ -109,12 +114,12 @@ func stdinClient(serverIP string, serverPort int, protocol string, notesChan cha
 				panic("Token must be size 2")
 			}
 			hexToken, err := hex.DecodeString(text)
-			must(err)
+			common.Must(err)
 			// append to bytes
 			bytes = append(bytes, hexToken...)
 			if count >= 2 {
 				//send hex code to channel
-				channel <- Raw{
+				channel <- types.Raw{
 					Time: time.Now(),
 					Data: bytes,
 				}
@@ -139,7 +144,7 @@ func stdinClient(serverIP string, serverPort int, protocol string, notesChan cha
 	}
 }
 
-func sendNotesClient(serverIP string, serverPort int, protocol string, delay int, notesChan chan interface{}, csvRecords []MidiCSVRecord) {
+func sendNotesClient(serverIP string, serverPort int, protocol string, delay int, notesChan chan interface{}, csvRecords []types.MidiCSVRecord) {
 
 	for {
 		reconnect := false
@@ -158,135 +163,135 @@ func sendNotesClient(serverIP string, serverPort int, protocol string, delay int
 				// this is just so we can deal with a single known struct with exposed fields
 				switch v := msg.(type) {
 				case channel.NoteOn:
-					channel := channelsFileCheckChannel(v.Channel(), csvRecords)
-					key := channelsFileCheckOffset(v.Channel(), v.Key(), csvRecords)
+					channel := channels.CheckChannel(v.Channel(), csvRecords)
+					key := channels.CheckOffset(v.Channel(), v.Key(), csvRecords)
 					if channel != 255 {
-						err := encoder.Encode(TCPMessage{Body: NoteOn{
+						err := encoder.Encode(types.TCPMessage{Body: types.NoteOn{
 							Time:     time.Now(),
 							Channel:  channel,
 							Key:      key,
 							Velocity: v.Velocity(),
 						}})
 						if err != nil {
-							cont(err)
+							common.Cont(err)
 							// put the note back on the channel
 							notesChan <- msg
 							reconnect = true
 						}
 					}
 				case channel.NoteOff:
-					channel := channelsFileCheckChannel(v.Channel(), csvRecords)
-					key := channelsFileCheckOffset(v.Channel(), v.Key(), csvRecords)
+					channel := channels.CheckChannel(v.Channel(), csvRecords)
+					key := channels.CheckOffset(v.Channel(), v.Key(), csvRecords)
 					if channel != 255 {
-						err := encoder.Encode(TCPMessage{Body: NoteOff{
+						err := encoder.Encode(types.TCPMessage{Body: types.NoteOff{
 							Time:    time.Now(),
 							Channel: channel,
 							Key:     key,
 						}})
 						if err != nil {
-							cont(err)
+							common.Cont(err)
 							notesChan <- msg
 							reconnect = true
 						}
 					}
 				case channel.ProgramChange:
-					channel := channelsFileCheckChannel(v.Channel(), csvRecords)
+					channel := channels.CheckChannel(v.Channel(), csvRecords)
 					if channel != 255 {
-						err := encoder.Encode(TCPMessage{Body: ProgramChange{
+						err := encoder.Encode(types.TCPMessage{Body: types.ProgramChange{
 							Time:    time.Now(),
 							Channel: channel,
 							Program: v.Program(),
 						}})
 						if err != nil {
-							cont(err)
+							common.Cont(err)
 							notesChan <- msg
 							reconnect = true
 						}
 					}
 				case channel.Aftertouch:
-					channel := channelsFileCheckChannel(v.Channel(), csvRecords)
+					channel := channels.CheckChannel(v.Channel(), csvRecords)
 					if channel != 255 {
-						err := encoder.Encode(TCPMessage{Body: Aftertouch{
+						err := encoder.Encode(types.TCPMessage{Body: types.Aftertouch{
 							Time:     time.Now(),
 							Channel:  channel,
 							Pressure: v.Pressure(),
 						}})
 						if err != nil {
-							cont(err)
+							common.Cont(err)
 							notesChan <- msg
 							reconnect = true
 						}
 					}
 
 				case channel.ControlChange:
-					channel := channelsFileCheckChannel(v.Channel(), csvRecords)
+					channel := channels.CheckChannel(v.Channel(), csvRecords)
 					if channel != 255 {
-						err := encoder.Encode(TCPMessage{Body: ControlChange{
+						err := encoder.Encode(types.TCPMessage{Body: types.ControlChange{
 							Time:       time.Now(),
 							Channel:    channel,
 							Controller: v.Controller(),
 							Value:      v.Value(),
 						}})
 						if err != nil {
-							cont(err)
+							common.Cont(err)
 							notesChan <- msg
 							reconnect = true
 						}
 					}
 				case channel.NoteOffVelocity:
-					channel := channelsFileCheckChannel(v.Channel(), csvRecords)
-					key := channelsFileCheckOffset(v.Channel(), v.Key(), csvRecords)
+					channel := channels.CheckChannel(v.Channel(), csvRecords)
+					key := channels.CheckOffset(v.Channel(), v.Key(), csvRecords)
 					if channel != 255 {
-						err := encoder.Encode(TCPMessage{Body: NoteOffVelocity{
+						err := encoder.Encode(types.TCPMessage{Body: types.NoteOffVelocity{
 							Time:     time.Now(),
 							Channel:  channel,
 							Key:      key,
 							Velocity: v.Velocity(),
 						}})
 						if err != nil {
-							cont(err)
+							common.Cont(err)
 							notesChan <- msg
 							reconnect = true
 						}
 					}
 				case channel.Pitchbend:
-					channel := channelsFileCheckChannel(v.Channel(), csvRecords)
+					channel := channels.CheckChannel(v.Channel(), csvRecords)
 					if channel != 255 {
-						err := encoder.Encode(TCPMessage{Body: Pitchbend{
+						err := encoder.Encode(types.TCPMessage{Body: types.Pitchbend{
 							Time:     time.Now(),
 							Channel:  channel,
 							Value:    v.Value(),
 							AbsValue: v.AbsValue(),
 						}})
 						if err != nil {
-							cont(err)
+							common.Cont(err)
 							notesChan <- msg
 							reconnect = true
 						}
 					}
 				case channel.PolyAftertouch:
-					channel := channelsFileCheckChannel(v.Channel(), csvRecords)
-					key := channelsFileCheckOffset(v.Channel(), v.Key(), csvRecords)
+					channel := channels.CheckChannel(v.Channel(), csvRecords)
+					key := channels.CheckOffset(v.Channel(), v.Key(), csvRecords)
 					if channel != 255 {
-						err := encoder.Encode(TCPMessage{Body: PolyAftertouch{
+						err := encoder.Encode(types.TCPMessage{Body: types.PolyAftertouch{
 							Time:     time.Now(),
 							Channel:  channel,
 							Key:      key,
 							Pressure: v.Pressure(),
 						}})
 						if err != nil {
-							cont(err)
+							common.Cont(err)
 							notesChan <- msg
 							reconnect = true
 						}
 					}
-				case Raw:
-					err := encoder.Encode(TCPMessage{Body: Raw{
+				case types.Raw:
+					err := encoder.Encode(types.TCPMessage{Body: types.Raw{
 						Time: v.Time,
 						Data: v.Data,
 					}})
 					if err != nil {
-						cont(err)
+						common.Cont(err)
 						notesChan <- msg
 						reconnect = true
 					}
@@ -309,13 +314,13 @@ func midiClient(midiPort int, delay int, notesChan chan interface{}, in midi.In)
 			notesChan <- msg
 		}),
 	)
-	must(rd.ListenTo(in))
+	common.Must(rd.ListenTo(in))
 	// sleep forever
 	select {}
 }
 
 // Listen for midi notes coming back so they can be printed
-func midiClientFeedback(serverIP string, serverPort int, protocol string, writers []*writer.Writer, out midi.Out, midiTuxChan chan MidiTuxMessage) {
+func midiClientFeedback(serverIP string, serverPort int, protocol string, writers []*writer.Writer, out midi.Out, midiTuxChan chan types.MidiTuxMessage) {
 
 	for {
 		reconnect := false
@@ -324,7 +329,7 @@ func midiClientFeedback(serverIP string, serverPort int, protocol string, writer
 		dec := gob.NewDecoder(conn)
 
 		for !reconnect {
-			var t TCPMessage
+			var t types.TCPMessage
 			err := dec.Decode(&t)
 			if err == io.EOF {
 				log.Println("Feedback connection closed by server.")
@@ -333,85 +338,85 @@ func midiClientFeedback(serverIP string, serverPort int, protocol string, writer
 				continue
 			}
 			if err != nil {
-				cont(err)
+				common.Cont(err)
 			} else {
 				// print with midiTux
 				switch m := t.Body.(type) {
-				case NoteOn:
-					ms := handleMs(m.Time)
-					cont(writer.NoteOn(writers[m.Channel], m.Key, m.Velocity))
-					midiTuxChan <- MidiTuxMessage{
+				case types.NoteOn:
+					ms := common.HandleMs(m.Time)
+					common.Cont(writer.NoteOn(writers[m.Channel], m.Key, m.Velocity))
+					midiTuxChan <- types.MidiTuxMessage{
 						Color: color.FgHiGreen,
 						T:     t.Body,
 						Ms:    ms,
 					}
-				case NoteOff:
-					ms := handleMs(m.Time)
-					cont(writer.NoteOff(writers[m.Channel], m.Key))
-					midiTuxChan <- MidiTuxMessage{
+				case types.NoteOff:
+					ms := common.HandleMs(m.Time)
+					common.Cont(writer.NoteOff(writers[m.Channel], m.Key))
+					midiTuxChan <- types.MidiTuxMessage{
 						Color: color.FgHiRed,
 						T:     t.Body,
 						Ms:    ms,
 					}
-				case ProgramChange:
-					ms := handleMs(m.Time)
-					cont(writer.ProgramChange(writers[m.Channel], m.Program))
-					midiTuxChan <- MidiTuxMessage{
+				case types.ProgramChange:
+					ms := common.HandleMs(m.Time)
+					common.Cont(writer.ProgramChange(writers[m.Channel], m.Program))
+					midiTuxChan <- types.MidiTuxMessage{
 						Color: color.FgHiYellow,
 						T:     t.Body,
 						Ms:    ms,
 					}
-				case Aftertouch:
-					ms := handleMs(m.Time)
-					cont(writer.Aftertouch(writers[m.Channel], m.Pressure))
-					midiTuxChan <- MidiTuxMessage{
+				case types.Aftertouch:
+					ms := common.HandleMs(m.Time)
+					common.Cont(writer.Aftertouch(writers[m.Channel], m.Pressure))
+					midiTuxChan <- types.MidiTuxMessage{
 						Color: color.FgHiBlue,
 						T:     t.Body,
 						Ms:    ms,
 					}
-				case ControlChange:
-					ms := handleMs(m.Time)
-					cont(writer.ControlChange(writers[m.Channel], m.Controller, m.Value))
-					midiTuxChan <- MidiTuxMessage{
+				case types.ControlChange:
+					ms := common.HandleMs(m.Time)
+					common.Cont(writer.ControlChange(writers[m.Channel], m.Controller, m.Value))
+					midiTuxChan <- types.MidiTuxMessage{
 						Color: color.FgHiMagenta,
 						T:     t.Body,
 						Ms:    ms,
 					}
-				case NoteOffVelocity:
-					ms := handleMs(m.Time)
-					cont(writer.NoteOffVelocity(writers[m.Channel], m.Key, m.Velocity))
-					midiTuxChan <- MidiTuxMessage{
+				case types.NoteOffVelocity:
+					ms := common.HandleMs(m.Time)
+					common.Cont(writer.NoteOffVelocity(writers[m.Channel], m.Key, m.Velocity))
+					midiTuxChan <- types.MidiTuxMessage{
 						Color: color.FgYellow,
 						T:     t.Body,
 						Ms:    ms,
 					}
-				case Pitchbend:
-					ms := handleMs(m.Time)
-					cont(writer.Pitchbend(writers[m.Channel], m.Value))
-					midiTuxChan <- MidiTuxMessage{
+				case types.Pitchbend:
+					ms := common.HandleMs(m.Time)
+					common.Cont(writer.Pitchbend(writers[m.Channel], m.Value))
+					midiTuxChan <- types.MidiTuxMessage{
 						Color: color.FgMagenta,
 						T:     t.Body,
 						Ms:    ms,
 					}
-				case PolyAftertouch:
-					ms := handleMs(m.Time)
-					cont(writer.PolyAftertouch(writers[m.Channel], m.Key, m.Pressure))
-					midiTuxChan <- MidiTuxMessage{
+				case types.PolyAftertouch:
+					ms := common.HandleMs(m.Time)
+					common.Cont(writer.PolyAftertouch(writers[m.Channel], m.Key, m.Pressure))
+					midiTuxChan <- types.MidiTuxMessage{
 						Color: color.FgCyan,
 						T:     t.Body,
 						Ms:    ms,
 					}
-				case Raw:
-					ms := handleMs(m.Time)
-					if checkAllNotesOff(m.Data) {
+				case types.Raw:
+					ms := common.HandleMs(m.Time)
+					if common.CheckAllNotesOff(m.Data) {
 						// all notes off expansion
-						expandAllNotesOff(m, ms, midiTuxChan, out)
+						common.ExpandAllNotesOff(m, ms, midiTuxChan, out)
 					} else {
 						// write the raw bytes to the MIDI device
 						_, err := out.Write(m.Data)
-						cont(err)
+						common.Cont(err)
 					}
-					midiTuxChan <- MidiTuxMessage{
+					midiTuxChan <- types.MidiTuxMessage{
 						Color: color.FgBlue,
 						T:     t.Body,
 						Ms:    ms,

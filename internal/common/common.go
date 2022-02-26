@@ -1,4 +1,4 @@
-package main
+package common
 
 import (
 	"encoding/gob"
@@ -9,65 +9,71 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/jrcichra/wfh-organist/internal/types"
 	"gitlab.com/gomidi/midi"
 	driver "gitlab.com/gomidi/rtmididrv"
 )
 
-func must(err error) {
+func HandleMs(m time.Time) int64 {
+	ms := time.Since(m).Milliseconds()
+	return ms
+}
+
+func Must(err error) {
 	if err != nil {
 		panic(err.Error())
 	}
 }
 
-func cont(err error) {
+func Cont(err error) {
 	if err != nil {
 		log.Println(err)
 	}
 }
 
-func printPort(port midi.Port) {
+func PrintPort(port midi.Port) {
 	log.Printf("[%v] %s\n", port.Number(), port.String())
 }
 
-func printOutPorts(ports []midi.Out) {
+func PrintOutPorts(ports []midi.Out) {
 	log.Printf("MIDI OUT Ports\n")
 	for _, port := range ports {
-		printPort(port)
+		PrintPort(port)
 	}
 	log.Printf("\n\n")
 }
 
-func printInPorts(ports []midi.In) {
+func PrintInPorts(ports []midi.In) {
 	log.Printf("MIDI IN Ports\n")
 	for _, port := range ports {
-		printPort(port)
+		PrintPort(port)
 	}
 	log.Printf("\n\n")
 }
 
-func getLists() {
+func GetLists() {
 	drv, err := driver.New()
-	must(err)
+	Must(err)
 
 	defer drv.Close()
 
 	ins, err := drv.Ins()
-	must(err)
+	Must(err)
 
 	outs, err := drv.Outs()
-	must(err)
+	Must(err)
 
-	printInPorts(ins)
-	printOutPorts(outs)
+	PrintInPorts(ins)
+	PrintOutPorts(outs)
 }
 
-func expandAllNotesOff(m Raw, ms int64, midiTuxChan chan MidiTuxMessage, out midi.Out) {
+func ExpandAllNotesOff(m types.Raw, ms int64, midiTuxChan chan types.MidiTuxMessage, out midi.Out) {
 	// for all channels
 	var channel byte
 	for channel = 0; channel < 16; channel++ {
 		firstByte := channel + 0x90
 		for k := uint8(0); k <= 0x7F; k++ {
-			midiTuxChan <- MidiTuxMessage{
+			midiTuxChan <- types.MidiTuxMessage{
 				Color: color.FgHiRed,
 				T:     m,
 				Ms:    ms,
@@ -75,7 +81,7 @@ func expandAllNotesOff(m Raw, ms int64, midiTuxChan chan MidiTuxMessage, out mid
 			// dont overwhelm the midi output
 			time.Sleep(1 * time.Millisecond)
 			_, err := out.Write([]byte{firstByte, k, 0})
-			cont(err)
+			Cont(err)
 		}
 	}
 }
@@ -89,12 +95,12 @@ func expandAllNotesOffSignal(out midi.Out) {
 			// dont overwhelm the midi output
 			time.Sleep(1 * time.Millisecond)
 			_, err := out.Write([]byte{firstByte, k, 0})
-			cont(err)
+			Cont(err)
 		}
 	}
 }
 
-func checkAllNotesOff(data []byte) bool {
+func CheckAllNotesOff(data []byte) bool {
 	firstByte := data[0]
 	secondByte := data[1]
 	thirdByte := data[2]
@@ -122,14 +128,14 @@ func SetupCloseHandler(out midi.Out) {
 	}()
 }
 
-func registerGobTypes() {
-	gob.Register(NoteOn{})
-	gob.Register(NoteOff{})
-	gob.Register(ProgramChange{})
-	gob.Register(Aftertouch{})
-	gob.Register(ControlChange{})
-	gob.Register(NoteOffVelocity{})
-	gob.Register(Pitchbend{})
-	gob.Register(PolyAftertouch{})
-	gob.Register(Raw{})
+func RegisterGobTypes() {
+	gob.Register(types.NoteOn{})
+	gob.Register(types.NoteOff{})
+	gob.Register(types.ProgramChange{})
+	gob.Register(types.Aftertouch{})
+	gob.Register(types.ControlChange{})
+	gob.Register(types.NoteOffVelocity{})
+	gob.Register(types.Pitchbend{})
+	gob.Register(types.PolyAftertouch{})
+	gob.Register(types.Raw{})
 }
