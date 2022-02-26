@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"bufio"
@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/jrcichra/wfh-organist/internal/types"
 )
 
 // send message from the api to the midi server
@@ -68,7 +70,7 @@ func apiHandleRaw(w http.ResponseWriter, r *http.Request, notesChan chan interfa
 		bytes = append(bytes, hexToken...)
 		if count >= 2 {
 			//send hex code to channel
-			notesChan <- Raw{
+			notesChan <- types.Raw{
 				Time: time.Now(),
 				Data: bytes,
 			}

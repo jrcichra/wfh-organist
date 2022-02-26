@@ -1,4 +1,4 @@
-package main
+package serial
 
 import (
 	"bufio"
@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/jrcichra/wfh-organist/internal/common"
+	"github.com/jrcichra/wfh-organist/internal/types"
 	"github.com/tarm/serial"
 )
 
@@ -21,27 +23,27 @@ looks like 42 decimal is the lowest value. Seeing numbers separated by about 4.
 */
 
 // read the serial port assuming it's the expression pedal
-func readSerial(notesChan chan interface{}) {
+func ReadSerial(notesChan chan interface{}) {
 	c := &serial.Config{Name: "/dev/ttyACM0", Baud: 115200}
 	s, err := serial.OpenPort(c)
 	if err != nil {
-		cont(err)
+		common.Cont(err)
 	} else {
 		scanner := bufio.NewScanner(s)
 		pPercentage := 0
 		for scanner.Scan() {
 			expression, err := strconv.Atoi(scanner.Text())
 			if err != nil {
-				cont(err)
+				common.Cont(err)
 			}
 			percentage := expressionPercentage(expression)
 			if percentage != pPercentage {
 				log.Println("percentage before math", percentage)
 				value := float64(percentage) / 100.0 * 127.0
 				log.Println("expression value", value)
-				notesChan <- Raw{Time: time.Now(), Data: []byte{0xB0, 0x07, uint8(value)}}
-				notesChan <- Raw{Time: time.Now(), Data: []byte{0xB1, 0x07, uint8(value)}}
-				notesChan <- Raw{Time: time.Now(), Data: []byte{0xB2, 0x07, uint8(value)}}
+				notesChan <- types.Raw{Time: time.Now(), Data: []byte{0xB0, 0x07, uint8(value)}}
+				notesChan <- types.Raw{Time: time.Now(), Data: []byte{0xB1, 0x07, uint8(value)}}
+				notesChan <- types.Raw{Time: time.Now(), Data: []byte{0xB2, 0x07, uint8(value)}}
 			}
 			pPercentage = percentage
 		}

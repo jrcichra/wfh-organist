@@ -6,6 +6,12 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"strings"
+
+	"github.com/jrcichra/wfh-organist/internal/client"
+	"github.com/jrcichra/wfh-organist/internal/common"
+	"github.com/jrcichra/wfh-organist/internal/miditux"
+	"github.com/jrcichra/wfh-organist/internal/server"
+	"github.com/jrcichra/wfh-organist/internal/types"
 )
 
 func main() {
@@ -39,7 +45,7 @@ func main() {
 
 	// print MIDI IO if requested
 	if *list {
-		getLists()
+		common.GetLists()
 		return
 	}
 
@@ -52,24 +58,24 @@ func main() {
 	}
 
 	// register types to gob
-	registerGobTypes()
+	common.RegisterGobTypes()
 
 	// spin up a midi-tux goroutine to handle message outputs
-	midiTuxChan := make(chan MidiTuxMessage, 100)
-	go midiTux(midiTuxChan)
+	midiTuxChan := make(chan types.MidiTuxMessage, 100)
+	go miditux.MidiTux(midiTuxChan)
 
 	// operate in client or server mode
 	switch strings.ToLower(*mode) {
 	case "server":
-		go server(*midiPort, *serverPort, *protocol, midiTuxChan)
+		go server.Server(*midiPort, *serverPort, *protocol, midiTuxChan)
 	case "client":
-		go client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay, *file, midiTuxChan, *profile)
+		go client.Client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay, *file, midiTuxChan, *profile)
 	case "local":
 		// run both (unless serverIP is set, and sleep forever
 		if *serverIP == "localhost" {
-			go server(*midiPort, *serverPort, *protocol, midiTuxChan)
+			go server.Server(*midiPort, *serverPort, *protocol, midiTuxChan)
 		}
-		go client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay, *file, midiTuxChan, *profile)
+		go client.Client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay, *file, midiTuxChan, *profile)
 	default:
 		log.Fatalf("Unknown mode: %s. Must be 'server' or 'client'\n", *mode)
 	}
