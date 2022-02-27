@@ -11,7 +11,9 @@ import (
 	"github.com/fatih/color"
 	"github.com/google/uuid"
 	"github.com/jrcichra/wfh-organist/internal/common"
+	"github.com/jrcichra/wfh-organist/internal/recorder"
 	"github.com/jrcichra/wfh-organist/internal/types"
+	"gitlab.com/gomidi/midi"
 	"gitlab.com/gomidi/midi/writer"
 	driver "gitlab.com/gomidi/rtmididrv"
 )
@@ -35,13 +37,20 @@ func Server(midiPort int, serverPort int, protocol string, midiTuxChan chan type
 	common.Must(err)
 	defer l.Close()
 
+	in, out := getMidiIO(midiPort)
+
 	// send notes back to the client
 	feedbackChan := make(chan interface{})
 	go feedbackNotes(feedbackChan)
 
 	//send notes listening to a go channel
 	notesChan := make(chan interface{})
-	go sendNotes(midiPort, notesChan, midiTuxChan, feedbackChan)
+	go sendNotes(out, notesChan, midiTuxChan, feedbackChan)
+
+	// always record to a file
+	stopRecording := make(chan struct{})
+	common.SetupCloseHandler(out, stopRecording)
+	go recorder.Record(in, stopRecording)
 
 	// also can accept notes from the HTTP API
 	go startHTTP(notesChan)
@@ -116,23 +125,35 @@ func feedbackNotes(feedbackChan chan interface{}) {
 	}
 }
 
-func sendNotes(midiPort int, notesChan chan interface{}, midiTuxChan chan types.MidiTuxMessage, feedbackChan chan interface{}) {
+func getMidiIO(midiPort int) (in midi.In, out midi.Out) {
 
 	drv, err := driver.New()
 	common.Must(err)
 	// make sure to close all open ports at the end
-	defer drv.Close()
 
 	outs, err := drv.Outs()
 	common.Must(err)
 
-	if len(outs)-1 < midiPort {
-		log.Printf("Too few MIDI OUT Ports found. Wanted Index: %d. Max Index: %d\n", midiPort, len(outs)-1)
-		return
-	}
-	out := outs[midiPort]
+	ins, err := drv.Ins()
+	common.Must(err)
 
+	if len(outs)-1 < midiPort {
+		log.Fatalf("Too few MIDI OUT Ports found. Wanted Index: %d. Max Index: %d\n", midiPort, len(outs)-1)
+	}
+
+	if len(ins)-1 < midiPort {
+		log.Fatalf("Too few MIDI IN Ports found. Wanted Index: %d. Max Index: %d\n", midiPort, len(ins)-1)
+	}
+
+	out = outs[midiPort]
 	common.Must(out.Open())
+
+	in = ins[midiPort]
+	common.Must(in.Open())
+	return in, out
+}
+
+func sendNotes(out midi.Out, notesChan chan interface{}, midiTuxChan chan types.MidiTuxMessage, feedbackChan chan interface{}) {
 
 	// make a writer for each channel
 	writers := make([]*writer.Writer, 16)
