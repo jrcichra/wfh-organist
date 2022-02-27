@@ -112,22 +112,6 @@ func feedbackNotes(feedbackChan chan interface{}) {
 			id := uuid.New().String()
 			clients[id] = c
 			encoders[id] = encoder
-			for {
-				note := <-feedbackChan
-				if note == nil {
-					log.Println("Feedback connection closed by client.")
-					err := c.Close()
-					common.Cont(err)
-					return
-				}
-				err := encoder.Encode(types.TCPMessage{Body: note})
-				if err != nil {
-					log.Println(err)
-					err := c.Close()
-					common.Cont(err)
-					return
-				}
-			}
 		}()
 	}
 }
