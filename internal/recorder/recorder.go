@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"sync"
 	"time"
 
@@ -24,6 +25,7 @@ type timedMsg struct {
 }
 
 func Record(in midi.In, stop chan struct{}) {
+	log.Println("Recording...")
 	var inbf bytes.Buffer
 	var outbf bytes.Buffer
 
@@ -34,13 +36,6 @@ func Record(in midi.In, stop chan struct{}) {
 	wr.WriteHeader()
 	wr.Write(meta.FractionalBPM(bpm)) // set the initial bpm
 	wr.Write(meter.M3_4())            // set the meter if needed
-
-	defer func() {
-		wr.Write(meta.EndOfTrack)
-		// get the epoch
-		file := fmt.Sprintf("%d.mid", time.Now().Unix())
-		ioutil.WriteFile(file, outbf.Bytes(), 0644)
-	}()
 
 	rd := midireader.New(&inbf, nil)
 
@@ -80,9 +75,17 @@ func Record(in midi.In, stop chan struct{}) {
 	})
 
 	// wait until we're told to stop
+	log.Println("Waiting for stop signal...")
 	<-stop
+	log.Println("Stopping...")
 	in.StopListening()
 	internalStop <- struct{}{}
 	wg.Wait()
+
+	wr.Write(meta.EndOfTrack)
+	// get the epoch
+	file := fmt.Sprintf("%d.mid", time.Now().Unix())
+	log.Println("writing to", file)
+	ioutil.WriteFile(file, outbf.Bytes(), 0644)
 
 }

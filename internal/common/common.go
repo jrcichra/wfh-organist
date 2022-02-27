@@ -122,11 +122,11 @@ func SetupCloseHandler(out midi.Out, stopChan chan struct{}) {
 	go func() {
 		<-c
 		log.Println("\r- Ctrl+C pressed in Terminal. Turning off all notes and stopping the player/recorder.")
-		expandAllNotesOffSignal(out)
 		select {
 		case stopChan <- struct{}{}:
 		default:
 		}
+		expandAllNotesOffSignal(out)
 		log.Println("Exiting...")
 		os.Exit(0)
 	}()
