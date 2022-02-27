@@ -75,17 +75,15 @@ func Record(in midi.In, stop chan struct{}) {
 	})
 
 	// wait until we're told to stop
-	log.Println("Waiting for stop signal...")
 	<-stop
-	log.Println("Stopping...")
 	in.StopListening()
 	internalStop <- struct{}{}
 	wg.Wait()
 
 	wr.Write(meta.EndOfTrack)
 	// get the epoch
-	file := fmt.Sprintf("%d.mid", time.Now().Unix())
-	log.Println("writing to", file)
+	file := fmt.Sprintf("recordings/%d.mid", time.Now().Unix())
+	log.Println("Writing to", file)
 	ioutil.WriteFile(file, outbf.Bytes(), 0644)
 
 }
