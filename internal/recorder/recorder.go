@@ -35,7 +35,7 @@ func Record(in midi.In, stop chan struct{}) {
 	wr := writer.NewSMF(&outbf, 1, smfwriter.TimeFormat(resolution))
 	wr.WriteHeader()
 	wr.Write(meta.FractionalBPM(bpm)) // set the initial bpm
-	wr.Write(meter.M3_4())            // set the meter if needed
+	wr.Write(meter.M4_4())            // set the meter if needed
 
 	rd := midireader.New(&inbf, nil)
 
