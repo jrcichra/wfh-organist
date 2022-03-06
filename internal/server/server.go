@@ -48,7 +48,7 @@ func Server(midiPort int, serverPort int, protocol string, midiTuxChan chan type
 	go sendNotes(out, notesChan, midiTuxChan, feedbackChan)
 
 	// always record to a file
-	stopRecording := make(chan struct{})
+	stopRecording := make(chan bool)
 	common.SetupCloseHandler(out, stopRecording)
 	go recorder.Record(in, stopRecording)
 

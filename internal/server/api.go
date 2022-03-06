@@ -48,7 +48,7 @@ func handleAPI(notesChan chan interface{}) http.Handler {
 	})
 }
 
-var stopPlayingChan = make(chan struct{})
+var stopPlayingChan = make(chan bool)
 
 func apiHandleStat(w http.ResponseWriter, r *http.Request) {
 	// get a list of midi files in the midi directory
@@ -71,7 +71,7 @@ func apiHandleStat(w http.ResponseWriter, r *http.Request) {
 
 func apiHandleStop(w http.ResponseWriter, r *http.Request, notesChan chan interface{}) {
 	select {
-	case stopPlayingChan <- struct{}{}:
+	case stopPlayingChan <- true:
 		time.Sleep(time.Millisecond * 500)
 		// send all notes off
 		notesChan <- types.Raw{
@@ -93,7 +93,7 @@ func apiHandlePlay(w http.ResponseWriter, r *http.Request, notesChan chan interf
 
 	// stop anything in progress
 	select {
-	case stopPlayingChan <- struct{}{}:
+	case stopPlayingChan <- true:
 	default:
 	}
 

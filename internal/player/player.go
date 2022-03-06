@@ -13,7 +13,7 @@ import (
 )
 
 // https://pkg.go.dev/gitlab.com/gomidi/midi/player#Player
-func PlayMidiFile(notesChan chan interface{}, file string, stopPlayingChan chan struct{}, wrap bool) {
+func PlayMidiFile(notesChan chan interface{}, file string, stopPlayingChan chan bool, wrap bool) {
 
 	log.Println("Playing midi file:", file)
 	stopRoutine := make(chan struct{})

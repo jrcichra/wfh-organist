@@ -39,7 +39,7 @@ func Client(midiPort int, serverIP string, serverPort int, protocol string, stdi
 	csvRecords := channels.ReadFile(profile + "channels.csv")
 
 	notesChan := make(chan interface{})
-	stopChan := make(chan struct{})
+	stopChan := make(chan bool)
 
 	drv, err := driver.New()
 	common.Must(err)
