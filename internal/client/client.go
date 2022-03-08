@@ -17,6 +17,8 @@ import (
 	"github.com/jrcichra/wfh-organist/internal/player"
 	"github.com/jrcichra/wfh-organist/internal/serial"
 	"github.com/jrcichra/wfh-organist/internal/types"
+	"github.com/jrcichra/wfh-organist/internal/volume"
+	"github.com/jrcichra/wfh-organist/pkg/timer"
 	"gitlab.com/gomidi/midi"
 	"gitlab.com/gomidi/midi/midimessage/channel"
 	"gitlab.com/gomidi/midi/reader"
@@ -33,7 +35,7 @@ func dial(serverIP string, serverPort int, protocol string) net.Conn {
 	return conn
 }
 
-func Client(midiPort int, serverIP string, serverPort int, protocol string, stdinMode bool, delay int, file string, midiTuxChan chan types.MidiTuxMessage, profile string) {
+func Client(midiPort int, serverIP string, serverPort int, protocol string, stdinMode bool, delay int, file string, midiTuxChan chan types.MidiTuxMessage, profile string, controlVolume bool) {
 
 	// read the csv
 	csvRecords := channels.ReadFile(profile + "channels.csv")
@@ -75,10 +77,14 @@ func Client(midiPort int, serverIP string, serverPort int, protocol string, stdi
 		writers[i].SetChannel(i)
 	}
 
+	if controlVolume {
+		volume.SetVolume(common.HIGH_VOLUME)
+	}
+
 	// in either mode read the serial for now
 	go serial.ReadSerial(notesChan)
 	// ability to send notes
-	go sendNotesClient(serverIP, serverPort, protocol, delay, notesChan, csvRecords)
+	go sendNotesClient(serverIP, serverPort, protocol, delay, notesChan, csvRecords, controlVolume)
 	// ability to get your own notes back
 	go midiClientFeedback(serverIP, 3132, protocol, writers, out, midiTuxChan)
 	switch stdinMode {
@@ -145,7 +151,23 @@ func stdinClient(serverIP string, serverPort int, protocol string, notesChan cha
 	}
 }
 
-func sendNotesClient(serverIP string, serverPort int, protocol string, delay int, notesChan chan interface{}, csvRecords []types.MidiCSVRecord) {
+func sendNotesClient(serverIP string, serverPort int, protocol string, delay int, notesChan chan interface{}, csvRecords []types.MidiCSVRecord, controlVolume bool) {
+
+	t := timer.Timer{}
+	timeout := t.New(10) // 10 seconds
+	t.Start()
+
+	go func() {
+		// reset the volume on the timeout
+		for range timeout {
+			if controlVolume {
+				volume.SetVolume(common.HIGH_VOLUME)
+				// make a new timer and overwrite the channel
+				t = timer.Timer{}
+				timeout = t.New(10) // 10 seconds
+			}
+		}
+	}()
 
 	for {
 		reconnect := false
@@ -155,6 +177,11 @@ func sendNotesClient(serverIP string, serverPort int, protocol string, delay int
 		for !reconnect {
 
 			msg := <-notesChan
+
+			if controlVolume {
+				volume.SetVolume(common.LOW_VOLUME)
+			}
+			t.Reset()
 
 			go func() {
 				if delay > 0 {

@@ -6,13 +6,13 @@ import (
 
 // A very simple timer because I'm concerned that timer.Reset() is not going to like my use case here
 type Timer struct {
-	requestedSeconds int
-	secondsLeft      int
+	requestedSeconds int64
+	secondsLeft      int64
 	resetChan        chan struct{}
 	doneChan         chan struct{}
 }
 
-func (t *Timer) New(seconds int) chan struct{} {
+func (t *Timer) New(seconds int64) chan struct{} {
 	t.requestedSeconds = seconds
 	t.secondsLeft = seconds
 	t.resetChan = make(chan struct{}, 10) // don't block on a reset message if we're sleeping

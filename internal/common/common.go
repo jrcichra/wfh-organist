@@ -14,6 +14,9 @@ import (
 	driver "gitlab.com/gomidi/rtmididrv"
 )
 
+const LOW_VOLUME = 50
+const HIGH_VOLUME = 100
+
 func HandleMs(m time.Time) int64 {
 	ms := time.Since(m).Milliseconds()
 	return ms
