@@ -153,21 +153,22 @@ func stdinClient(serverIP string, serverPort int, protocol string, notesChan cha
 
 func sendNotesClient(serverIP string, serverPort int, protocol string, delay int, notesChan chan interface{}, csvRecords []types.MidiCSVRecord, controlVolume bool) {
 
-	t := timer.Timer{}
-	timeout := t.New(10) // 10 seconds
-	t.Start()
+	var t *timer.Timer
+	if controlVolume {
+		t = &timer.Timer{}
+		timeout := t.New(10) // 10 seconds
+		t.Start()
 
-	go func() {
-		// reset the volume on the timeout
-		for range timeout {
-			if controlVolume {
+		go func() {
+			// reset the volume on the timeout
+			for range timeout {
 				volume.SetVolume(common.HIGH_VOLUME)
 				// make a new timer and overwrite the channel
-				t = timer.Timer{}
+				t = &timer.Timer{}
 				timeout = t.New(10) // 10 seconds
 			}
-		}
-	}()
+		}()
+	}
 
 	for {
 		reconnect := false
@@ -180,8 +181,8 @@ func sendNotesClient(serverIP string, serverPort int, protocol string, delay int
 
 			if controlVolume {
 				volume.SetVolume(common.LOW_VOLUME)
+				t.Reset()
 			}
-			t.Reset()
 
 			go func() {
 				if delay > 0 {
