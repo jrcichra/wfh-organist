@@ -5,9 +5,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 
+	"github.com/jrcichra/wfh-organist/internal/common"
 	"github.com/jrcichra/wfh-organist/pkg/timer"
 	"gitlab.com/gomidi/midi"
 	"gitlab.com/gomidi/midi/midimessage/meta"
@@ -25,7 +29,8 @@ type timedMsg struct {
 	data           []byte
 }
 
-func Record(in midi.In, stop chan bool) {
+func Record(in midi.In) {
+	stop := make(chan struct{})
 	resolution := smf.MetricTicks(1920)
 	bpm := 120.00
 	external := false
@@ -43,10 +48,19 @@ func Record(in midi.In, stop chan bool) {
 		var wr *writer.SMF
 		rd := midireader.New(&inbf, nil)
 		ch := make(chan timedMsg)
-		internalStop := make(chan struct{})
 
 		var wg sync.WaitGroup
 		wg.Add(1)
+		common.ShutdownWg.Add(1)
+
+		c := make(chan os.Signal)
+		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+		go func() {
+			<-c
+			log.Println("\r- Ctrl+C pressed in Terminal. Stopping the recording.")
+			external = true
+			stop <- struct{}{}
+		}()
 
 		go func() {
 			for {
@@ -57,12 +71,11 @@ func Record(in midi.In, stop chan bool) {
 					inbf.Write(tm.data)
 					msg, _ := rd.Read()
 					wr.Write(msg)
-				case <-internalStop:
-					wg.Done()
-					return
 				case <-timeout:
 					log.Println("Recording has Timed out")
-					stop <- false // force a stop, no return or waitgroup so we hit internalStop next loop
+					stop <- struct{}{}
+					wg.Done()
+					return
 				}
 			}
 		}()
@@ -92,10 +105,9 @@ func Record(in midi.In, stop chan bool) {
 			ch <- timedMsg{data: data, deltaMicrosecs: deltaMicrosecs}
 		})
 
-		// wait until we're told to stop (by the outside world or ourself)
-		external = <-stop
+		// wait until we're told to stop
+		<-stop
 		in.StopListening()
-		internalStop <- struct{}{}
 		wg.Wait()
 
 		if wr != nil {
@@ -106,5 +118,7 @@ func Record(in midi.In, stop chan bool) {
 			ioutil.WriteFile(file, outbf.Bytes(), 0644)
 		}
 	}
+
+	common.ShutdownWg.Done()
 
 }

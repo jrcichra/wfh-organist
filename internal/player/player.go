@@ -4,8 +4,12 @@ package player
 
 import (
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
+	"github.com/jrcichra/wfh-organist/internal/common"
 	"github.com/jrcichra/wfh-organist/internal/types"
 	"gitlab.com/gomidi/midi"
 	"gitlab.com/gomidi/midi/midimessage/channel"
@@ -23,12 +27,23 @@ func PlayMidiFile(notesChan chan interface{}, file string, stopPlayingChan chan 
 		log.Println(err)
 		return
 	}
+
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		common.ShutdownWg.Add(1) // only add to the waitgroup once we got the signal, there might be multiple players and I'm not ready to handle that case yet
+		log.Println("\r- Ctrl+C pressed in Terminal. Stopping playback...")
+		<-stopPlayingChan
+	}()
+
 	go func() {
 		// wait for when we should stop
 		<-stopPlayingChan
 		// these GetMessages might still be around so we need to update a bool to not sound them and finish the file
 		stopBool = true
-		stopRoutine <- struct{}{} // this frees up the player resources
+		stopRoutine <- struct{}{}
+		common.ShutdownWg.Done()
 	}()
 
 	player.GetMessages(func(wait time.Duration, m midi.Message, track int16) {

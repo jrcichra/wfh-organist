@@ -14,7 +14,6 @@ import (
 	"github.com/fatih/color"
 	"github.com/jrcichra/wfh-organist/internal/common"
 	"github.com/jrcichra/wfh-organist/internal/parser/channels"
-	"github.com/jrcichra/wfh-organist/internal/player"
 	"github.com/jrcichra/wfh-organist/internal/serial"
 	"github.com/jrcichra/wfh-organist/internal/types"
 	"gitlab.com/gomidi/midi"
@@ -33,13 +32,12 @@ func dial(serverIP string, serverPort int, protocol string) net.Conn {
 	return conn
 }
 
-func Client(midiPort int, serverIP string, serverPort int, protocol string, stdinMode bool, delay int, file string, midiTuxChan chan types.MidiTuxMessage, profile string) {
+func Client(midiPort int, serverIP string, serverPort int, protocol string, stdinMode bool, delay int, midiTuxChan chan types.MidiTuxMessage, profile string, trx bool) {
 
 	// read the csv
 	csvRecords := channels.ReadFile(profile + "channels.csv")
 
 	notesChan := make(chan interface{})
-	stopChan := make(chan bool)
 
 	drv, err := driver.New()
 	common.Must(err)
@@ -65,7 +63,7 @@ func Client(midiPort int, serverIP string, serverPort int, protocol string, stdi
 
 	common.Must(out.Open())
 
-	common.SetupCloseHandler(out, stopChan)
+	common.AllNotesOffOnSignal(out)
 
 	// make a writer for each channel
 	writers := make([]*writer.Writer, 16)
@@ -85,12 +83,7 @@ func Client(midiPort int, serverIP string, serverPort int, protocol string, stdi
 	case true:
 		stdinClient(serverIP, serverPort, protocol, notesChan)
 	default:
-		switch file == "" {
-		case true:
-			midiClient(midiPort, delay, notesChan, in)
-		default:
-			player.PlayMidiFile(notesChan, file, stopChan, false)
-		}
+		midiClient(midiPort, delay, notesChan, in)
 	}
 }
 

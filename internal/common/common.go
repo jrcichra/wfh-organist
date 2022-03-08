@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -13,6 +14,27 @@ import (
 	"gitlab.com/gomidi/midi"
 	driver "gitlab.com/gomidi/rtmididrv"
 )
+
+var ShutdownWg = &sync.WaitGroup{}
+
+func ShutdownOnSignal() {
+	// sit on a waitgroup and shutdown when it's zero
+	ShutdownWg.Wait()
+	log.Println("Shutting down program...")
+	os.Exit(0)
+}
+
+func AllNotesOffOnSignal(out midi.Out) {
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	ShutdownWg.Add(1)
+	go func() {
+		<-c
+		log.Println("\r- Ctrl+C pressed in Terminal. Turning off all notes.")
+		expandAllNotesOffSignal(out)
+		ShutdownWg.Done()
+	}()
+}
 
 func HandleMs(m time.Time) int64 {
 	ms := time.Since(m).Milliseconds()
@@ -116,22 +138,6 @@ func CheckAllNotesOff(data []byte) bool {
 	}
 }
 
-func SetupCloseHandler(out midi.Out, stopChan chan bool) {
-	c := make(chan os.Signal)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-c
-		log.Println("\r- Ctrl+C pressed in Terminal. Turning off all notes and stopping the player/recorder.")
-		select {
-		case stopChan <- true:
-		default:
-		}
-		expandAllNotesOffSignal(out)
-		log.Println("Exiting...")
-		os.Exit(0)
-	}()
-}
-
 func RegisterGobTypes() {
 	gob.Register(types.NoteOn{})
 	gob.Register(types.NoteOff{})
@@ -142,4 +148,5 @@ func RegisterGobTypes() {
 	gob.Register(types.Pitchbend{})
 	gob.Register(types.PolyAftertouch{})
 	gob.Register(types.Raw{})
+	gob.Register(types.Info{})
 }

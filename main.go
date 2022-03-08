@@ -6,6 +6,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/jrcichra/wfh-organist/internal/client"
 	"github.com/jrcichra/wfh-organist/internal/common"
@@ -27,7 +28,7 @@ func main() {
 	profile := flag.String("profile", "profiles/wosp/", "profiles path")
 	stdinMode := flag.Bool("stdin", false, "read from stdin")
 	delay := flag.Int("delay", 0, "artificial delay in ms")
-	file := flag.String("file", "", "midi file to play")
+	trx := flag.Bool("trx", false, "enable/disable trx support (requires tx/rx binaries)")
 
 	flag.Parse()
 
@@ -67,17 +68,19 @@ func main() {
 	// operate in client or server mode
 	switch strings.ToLower(*mode) {
 	case "server":
-		go server.Server(*midiPort, *serverPort, *protocol, midiTuxChan)
+		go server.Server(*midiPort, *serverPort, *protocol, midiTuxChan, *trx)
 	case "client":
-		go client.Client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay, *file, midiTuxChan, *profile)
+		go client.Client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay, midiTuxChan, *profile, *trx)
 	case "local":
 		// run both (unless serverIP is set, and sleep forever
 		if *serverIP == "localhost" {
-			go server.Server(*midiPort, *serverPort, *protocol, midiTuxChan)
+			go server.Server(*midiPort, *serverPort, *protocol, midiTuxChan, *trx)
 		}
-		go client.Client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay, *file, midiTuxChan, *profile)
+		go client.Client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay, midiTuxChan, *profile, *trx)
 	default:
 		log.Fatalf("Unknown mode: %s. Must be 'server' or 'client'\n", *mode)
 	}
+	time.Sleep(5 * time.Second) // bit of a hack to let the wg grow first
+	go common.ShutdownOnSignal()
 	select {}
 }

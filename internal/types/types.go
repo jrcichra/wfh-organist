@@ -12,14 +12,6 @@ type MidiCSVRecord struct {
 	Offset        int
 }
 
-// func (m *MidiMap) init() {
-// 	m.Maps = make(map[uint8]uint8)
-// }
-
-// func (m *MidiMap) add(input uint8, output uint8) {
-// 	m.Maps[input] = output
-// }
-
 type NoteOn struct {
 	Time     time.Time
 	Channel  uint8
@@ -77,6 +69,12 @@ type PolyAftertouch struct {
 type Raw struct {
 	Time time.Time
 	Data []byte
+}
+
+// Info sends information in a single key/value format - used for bootstrapping services like trx
+type Info struct {
+	Key   string
+	Value string
 }
 
 // Get around gob types
