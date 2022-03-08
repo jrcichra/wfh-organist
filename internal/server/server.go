@@ -13,10 +13,15 @@ import (
 	"github.com/jrcichra/wfh-organist/internal/common"
 	"github.com/jrcichra/wfh-organist/internal/recorder"
 	"github.com/jrcichra/wfh-organist/internal/types"
+	"github.com/jrcichra/wfh-organist/pkg/tx"
 	"gitlab.com/gomidi/midi"
 	"gitlab.com/gomidi/midi/writer"
 	driver "gitlab.com/gomidi/rtmididrv"
 )
+
+var trxt = tx.Tx{
+	Interface: "eth0",
+}
 
 func startHTTP(notesChan chan interface{}) {
 	// serve the website
@@ -47,10 +52,9 @@ func Server(midiPort int, serverPort int, protocol string, midiTuxChan chan type
 	notesChan := make(chan interface{})
 	go sendNotes(out, notesChan, midiTuxChan, feedbackChan)
 
+	common.AllNotesOffOnSignal(out)
 	// always record to a file
-	stopRecording := make(chan bool)
-	common.SetupCloseHandler(out, stopRecording)
-	go recorder.Record(in, stopRecording)
+	go recorder.Record(in)
 
 	// also can accept notes from the HTTP API
 	go startHTTP(notesChan)
@@ -255,6 +259,13 @@ func sendNotes(out midi.Out, notesChan chan interface{}, midiTuxChan chan types.
 				Color: color.FgBlue,
 				T:     m,
 				Ms:    ms,
+			}
+		case types.Info:
+			// Info is special, it's an internal TCP message for bootstrapping some services
+			if m.Key == "trx-client" {
+				// The value is the IP address of the trx-client. Start transmitting data to them
+				trxt.Address = m.Value
+				trxt.Run()
 			}
 		default:
 			log.Println("Unknown message type:", m)
