@@ -9,7 +9,6 @@ import (
 	"strconv"
 
 	"github.com/fatih/color"
-	"github.com/google/uuid"
 	"github.com/jrcichra/wfh-organist/internal/common"
 	"github.com/jrcichra/wfh-organist/internal/recorder"
 	"github.com/jrcichra/wfh-organist/internal/types"
@@ -30,27 +29,31 @@ func startHTTP(notesChan chan interface{}) {
 	http.ListenAndServe(":8080", nil)
 }
 
-func Server(midiPort int, serverPort int, protocol string, midiTuxChan chan types.MidiTuxMessage) {
+func Server(midiPort int, serverPort int, protocol string, midiTuxChan chan types.MidiTuxMessage, dontRecord bool) {
 
 	// wait for someone to connect to the server
 	l, err := net.Listen(protocol, ":"+strconv.Itoa(serverPort))
 	common.Must(err)
 	defer l.Close()
 
-	in, out := getMidiIO(midiPort)
+	drv, err := driver.New()
+	common.Must(err)
+	// make sure to close all open ports at the end
+	defer drv.Close()
 
-	// send notes back to the client
-	feedbackChan := make(chan interface{})
-	go feedbackNotes(feedbackChan)
+	out := common.GetMidiOutput(drv, midiPort)
 
 	//send notes listening to a go channel
 	notesChan := make(chan interface{})
-	go sendNotes(out, notesChan, midiTuxChan, feedbackChan)
+	go sendNotes(out, notesChan, midiTuxChan)
 
-	// always record to a file
-	stopRecording := make(chan bool)
-	common.SetupCloseHandler(out, stopRecording)
-	go recorder.Record(in, stopRecording)
+	// record to a file
+	if !dontRecord {
+		in := common.GetMidiInput(drv, midiPort)
+		stopRecording := make(chan bool)
+		common.SetupCloseHandler(out, stopRecording)
+		go recorder.Record(in, stopRecording)
+	}
 
 	// also can accept notes from the HTTP API
 	go startHTTP(notesChan)
@@ -65,95 +68,29 @@ func Server(midiPort int, serverPort int, protocol string, midiTuxChan chan type
 
 		go func() {
 			dec := gob.NewDecoder(c)
+			enc := gob.NewEncoder(c)
 			for {
 				var t types.TCPMessage
 				err := dec.Decode(&t)
 				if err == io.EOF {
 					log.Println("Connection closed by client.")
-					feedbackChan <- nil
 					c.Close()
 					return
 				}
 				common.Must(err)
 				// send through the channel
 				notesChan <- t.Body
-			}
-		}()
-	}
-}
-
-// send notes back to the client from the server
-func feedbackNotes(feedbackChan chan interface{}) {
-	// listen for clients on 3132
-	l, err := net.Listen("tcp", ":3132")
-	common.Must(err)
-	defer l.Close()
-	clients := make(map[string]net.Conn)
-	encoders := make(map[string]*gob.Encoder)
-
-	go func() {
-		// get notes from the feedback chan and send them to every client we know about
-		for note := range feedbackChan {
-			for name, e := range encoders {
-				err := e.Encode(types.TCPMessage{Body: note})
+				// and send it through feedback channel
+				err = enc.Encode(types.TCPMessage{Body: t.Body})
 				if err != nil {
 					log.Println(err)
-					// If there was an error, close the connection and remove the client from the maps
-					err := clients[name].Close()
-					common.Cont(err)
-					delete(clients, name)
-					delete(encoders, name)
-					return
 				}
 			}
-		}
-	}()
-
-	for {
-		log.Println("Feedback Listening on", l.Addr())
-		// accept user
-		c, err := l.Accept()
-		common.Must(err)
-		log.Println("Feedback connection from:", c.RemoteAddr())
-		go func() {
-			encoder := gob.NewEncoder(c)
-			// add the client to the maps
-			id := uuid.New().String()
-			clients[id] = c
-			encoders[id] = encoder
 		}()
 	}
 }
 
-func getMidiIO(midiPort int) (in midi.In, out midi.Out) {
-
-	drv, err := driver.New()
-	common.Must(err)
-	// make sure to close all open ports at the end
-
-	outs, err := drv.Outs()
-	common.Must(err)
-
-	ins, err := drv.Ins()
-	common.Must(err)
-
-	if len(outs)-1 < midiPort {
-		log.Fatalf("Too few MIDI OUT Ports found. Wanted Index: %d. Max Index: %d\n", midiPort, len(outs)-1)
-	}
-
-	if len(ins)-1 < midiPort {
-		log.Fatalf("Too few MIDI IN Ports found. Wanted Index: %d. Max Index: %d\n", midiPort, len(ins)-1)
-	}
-
-	out = outs[midiPort]
-	common.Must(out.Open())
-
-	in = ins[midiPort]
-	common.Must(in.Open())
-	return in, out
-}
-
-func sendNotes(out midi.Out, notesChan chan interface{}, midiTuxChan chan types.MidiTuxMessage, feedbackChan chan interface{}) {
+func sendNotes(out midi.Out, notesChan chan interface{}, midiTuxChan chan types.MidiTuxMessage) {
 
 	// make a writer for each channel
 	writers := make([]*writer.Writer, 16)
@@ -165,11 +102,6 @@ func sendNotes(out midi.Out, notesChan chan interface{}, midiTuxChan chan types.
 
 	for {
 		input := <-notesChan
-		// send it out the feedback if someones there
-		select {
-		case feedbackChan <- input:
-		default:
-		}
 		// determine the type of message
 		switch m := input.(type) {
 		case types.NoteOn:
@@ -250,11 +182,6 @@ func sendNotes(out midi.Out, notesChan chan interface{}, midiTuxChan chan types.
 				// write the raw bytes to the MIDI device
 				_, err := out.Write(m.Data)
 				common.Cont(err)
-			}
-			midiTuxChan <- types.MidiTuxMessage{
-				Color: color.FgBlue,
-				T:     m,
-				Ms:    ms,
 			}
 		default:
 			log.Println("Unknown message type:", m)

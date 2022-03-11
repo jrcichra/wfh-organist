@@ -8,7 +8,9 @@ import (
 	"io"
 	"log"
 	"net"
+	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/fatih/color"
@@ -27,15 +29,22 @@ import (
 )
 
 func dial(serverIP string, serverPort int, protocol string) net.Conn {
-	serverStr := fmt.Sprintf("%s:%d", serverIP, serverPort)
-	log.Println("Connecting to " + serverStr + "...")
-	conn, err := net.Dial(protocol, serverStr)
-	common.Must(err)
-	log.Println("Connected to", serverStr)
-	return conn
+	// keep trying to connect
+	for {
+		serverStr := fmt.Sprintf("%s:%d", serverIP, serverPort)
+		log.Println("Connecting to " + serverStr + "...")
+		conn, err := net.Dial(protocol, serverStr)
+		if err != nil {
+			log.Println(err)
+			time.Sleep(time.Second * 5)
+			continue
+		}
+		log.Println("Connected to", serverStr)
+		return conn
+	}
 }
 
-func Client(midiPort int, serverIP string, serverPort int, protocol string, stdinMode bool, delay int, file string, midiTuxChan chan types.MidiTuxMessage, profile string, controlVolume bool) {
+func Client(midiPort int, serverIP string, serverPort int, protocol string, stdinMode bool, delay int, file string, midiTuxChan chan types.MidiTuxMessage, profile string, dontControlVolume bool) {
 
 	// read the csv
 	csvRecords := channels.ReadFile(profile + "channels.csv")
@@ -45,27 +54,11 @@ func Client(midiPort int, serverIP string, serverPort int, protocol string, stdi
 
 	drv, err := driver.New()
 	common.Must(err)
-
 	// make sure to close all open ports at the end
 	defer drv.Close()
 
-	ins, err := drv.Ins()
-	common.Must(err)
-
-	if len(ins)-1 < midiPort {
-		log.Printf("Too few MIDI IN Ports found. Wanted Index: %d. Max Index: %d\n", midiPort, len(ins)-1)
-		return
-	}
-	in := ins[midiPort]
-
-	common.Must(in.Open())
-
-	outs, err := drv.Outs()
-	common.Must(err)
-
-	out := outs[midiPort]
-
-	common.Must(out.Open())
+	in := common.GetMidiInput(drv, midiPort)
+	out := common.GetMidiOutput(drv, midiPort)
 
 	common.SetupCloseHandler(out, stopChan)
 
@@ -77,30 +70,42 @@ func Client(midiPort int, serverIP string, serverPort int, protocol string, stdi
 		writers[i].SetChannel(i)
 	}
 
-	if controlVolume {
+	if !dontControlVolume {
 		volume.SetVolume(common.HIGH_VOLUME)
 	}
 
+	// http server for debug pprof
+	go http.ListenAndServe(":8081", nil)
+
 	// in either mode read the serial for now
 	go serial.ReadSerial(notesChan)
-	// ability to send notes
-	go sendNotesClient(serverIP, serverPort, protocol, delay, notesChan, csvRecords, controlVolume)
-	// ability to get your own notes back
-	go midiClientFeedback(serverIP, 3132, protocol, writers, out, midiTuxChan)
-	switch stdinMode {
-	case true:
-		stdinClient(serverIP, serverPort, protocol, notesChan)
-	default:
-		switch file == "" {
-		case true:
-			midiClient(midiPort, delay, notesChan, in)
-		default:
-			player.PlayMidiFile(notesChan, file, stopChan, false)
-		}
+
+	if stdinMode {
+		go stdinClient(notesChan)
+	}
+
+	if file == "" {
+		go midiClient(midiPort, delay, notesChan, in)
+	} else {
+		go player.PlayMidiFile(notesChan, file, stopChan, false)
+	}
+
+	// things that would need a new connection if the connection was lost
+	for {
+		wg := &sync.WaitGroup{}
+		conn := dial(serverIP, serverPort, protocol)
+		closedChan := make(chan struct{})
+		// ability to send notes
+		wg.Add(1)
+		go sendNotesClient(wg, closedChan, conn, delay, notesChan, csvRecords, dontControlVolume)
+		// ability to get your own notes back
+		wg.Add(1)
+		go midiClientFeedback(wg, closedChan, conn, writers, out, midiTuxChan)
+		wg.Wait() // reconnect and respawn things on the waitgroup coming back
 	}
 }
 
-func stdinClient(serverIP string, serverPort int, protocol string, notesChan chan interface{}) {
+func stdinClient(notesChan chan interface{}) {
 
 	channel := make(chan types.Raw)
 
@@ -118,7 +123,10 @@ func stdinClient(serverIP string, serverPort int, protocol string, notesChan cha
 			text := scanner.Text()
 			// each token must be size 2
 			if len(text) != 2 {
-				panic("Token must be size 2")
+				log.Println("Token must be size 2")
+				bytes = make([]byte, 0)
+				count = 0
+				continue
 			}
 			hexToken, err := hex.DecodeString(text)
 			common.Must(err)
@@ -151,10 +159,10 @@ func stdinClient(serverIP string, serverPort int, protocol string, notesChan cha
 	}
 }
 
-func sendNotesClient(serverIP string, serverPort int, protocol string, delay int, notesChan chan interface{}, csvRecords []types.MidiCSVRecord, controlVolume bool) {
+func sendNotesClient(wg *sync.WaitGroup, closedChan chan struct{}, conn net.Conn, delay int, notesChan chan interface{}, csvRecords []types.MidiCSVRecord, dontControlVolume bool) {
 
 	var t *timer.Timer
-	if controlVolume {
+	if !dontControlVolume {
 		t = &timer.Timer{}
 		timeout := t.New(10) // 10 seconds
 		t.Start()
@@ -170,166 +178,168 @@ func sendNotesClient(serverIP string, serverPort int, protocol string, delay int
 		}()
 	}
 
-	for {
-		reconnect := false
+	encoder := gob.NewEncoder(conn)
+	reconnect := false
+	for !reconnect {
+		var msg interface{}
+		select {
+		case msg = <-notesChan:
+		case <-closedChan:
+			reconnect = true
+			continue
+		}
 
-		conn := dial(serverIP, serverPort, protocol)
-		encoder := gob.NewEncoder(conn)
-		for !reconnect {
+		if !dontControlVolume {
+			volume.SetVolume(common.LOW_VOLUME)
+			t.Reset()
+		}
 
-			msg := <-notesChan
-
-			if controlVolume {
-				volume.SetVolume(common.LOW_VOLUME)
-				t.Reset()
+		go func() {
+			if delay > 0 {
+				time.Sleep(time.Duration(delay) * time.Millisecond)
 			}
-
-			go func() {
-				if delay > 0 {
-					time.Sleep(time.Duration(delay) * time.Millisecond)
+			// process messages differently based on type
+			// this is just so we can deal with a single known struct with exposed fields
+			switch v := msg.(type) {
+			case channel.NoteOn:
+				channel := channels.CheckChannel(v.Channel(), csvRecords)
+				key := channels.CheckOffset(v.Channel(), v.Key(), csvRecords)
+				if channel != 255 {
+					err := encoder.Encode(types.TCPMessage{Body: types.NoteOn{
+						Time:     time.Now(),
+						Channel:  channel,
+						Key:      key,
+						Velocity: v.Velocity(),
+					}})
+					if err != nil {
+						common.Cont(err)
+						// put the note back on the channel
+						notesChan <- msg
+						reconnect = true
+					}
 				}
-				// process messages differently based on type
-				// this is just so we can deal with a single known struct with exposed fields
-				switch v := msg.(type) {
-				case channel.NoteOn:
-					channel := channels.CheckChannel(v.Channel(), csvRecords)
-					key := channels.CheckOffset(v.Channel(), v.Key(), csvRecords)
-					if channel != 255 {
-						err := encoder.Encode(types.TCPMessage{Body: types.NoteOn{
-							Time:     time.Now(),
-							Channel:  channel,
-							Key:      key,
-							Velocity: v.Velocity(),
-						}})
-						if err != nil {
-							common.Cont(err)
-							// put the note back on the channel
-							notesChan <- msg
-							reconnect = true
-						}
-					}
-				case channel.NoteOff:
-					channel := channels.CheckChannel(v.Channel(), csvRecords)
-					key := channels.CheckOffset(v.Channel(), v.Key(), csvRecords)
-					if channel != 255 {
-						err := encoder.Encode(types.TCPMessage{Body: types.NoteOff{
-							Time:    time.Now(),
-							Channel: channel,
-							Key:     key,
-						}})
-						if err != nil {
-							common.Cont(err)
-							notesChan <- msg
-							reconnect = true
-						}
-					}
-				case channel.ProgramChange:
-					channel := channels.CheckChannel(v.Channel(), csvRecords)
-					if channel != 255 {
-						err := encoder.Encode(types.TCPMessage{Body: types.ProgramChange{
-							Time:    time.Now(),
-							Channel: channel,
-							Program: v.Program(),
-						}})
-						if err != nil {
-							common.Cont(err)
-							notesChan <- msg
-							reconnect = true
-						}
-					}
-				case channel.Aftertouch:
-					channel := channels.CheckChannel(v.Channel(), csvRecords)
-					if channel != 255 {
-						err := encoder.Encode(types.TCPMessage{Body: types.Aftertouch{
-							Time:     time.Now(),
-							Channel:  channel,
-							Pressure: v.Pressure(),
-						}})
-						if err != nil {
-							common.Cont(err)
-							notesChan <- msg
-							reconnect = true
-						}
-					}
-
-				case channel.ControlChange:
-					channel := channels.CheckChannel(v.Channel(), csvRecords)
-					if channel != 255 {
-						err := encoder.Encode(types.TCPMessage{Body: types.ControlChange{
-							Time:       time.Now(),
-							Channel:    channel,
-							Controller: v.Controller(),
-							Value:      v.Value(),
-						}})
-						if err != nil {
-							common.Cont(err)
-							notesChan <- msg
-							reconnect = true
-						}
-					}
-				case channel.NoteOffVelocity:
-					channel := channels.CheckChannel(v.Channel(), csvRecords)
-					key := channels.CheckOffset(v.Channel(), v.Key(), csvRecords)
-					if channel != 255 {
-						err := encoder.Encode(types.TCPMessage{Body: types.NoteOffVelocity{
-							Time:     time.Now(),
-							Channel:  channel,
-							Key:      key,
-							Velocity: v.Velocity(),
-						}})
-						if err != nil {
-							common.Cont(err)
-							notesChan <- msg
-							reconnect = true
-						}
-					}
-				case channel.Pitchbend:
-					channel := channels.CheckChannel(v.Channel(), csvRecords)
-					if channel != 255 {
-						err := encoder.Encode(types.TCPMessage{Body: types.Pitchbend{
-							Time:     time.Now(),
-							Channel:  channel,
-							Value:    v.Value(),
-							AbsValue: v.AbsValue(),
-						}})
-						if err != nil {
-							common.Cont(err)
-							notesChan <- msg
-							reconnect = true
-						}
-					}
-				case channel.PolyAftertouch:
-					channel := channels.CheckChannel(v.Channel(), csvRecords)
-					key := channels.CheckOffset(v.Channel(), v.Key(), csvRecords)
-					if channel != 255 {
-						err := encoder.Encode(types.TCPMessage{Body: types.PolyAftertouch{
-							Time:     time.Now(),
-							Channel:  channel,
-							Key:      key,
-							Pressure: v.Pressure(),
-						}})
-						if err != nil {
-							common.Cont(err)
-							notesChan <- msg
-							reconnect = true
-						}
-					}
-				case types.Raw:
-					err := encoder.Encode(types.TCPMessage{Body: types.Raw{
-						Time: v.Time,
-						Data: v.Data,
+			case channel.NoteOff:
+				channel := channels.CheckChannel(v.Channel(), csvRecords)
+				key := channels.CheckOffset(v.Channel(), v.Key(), csvRecords)
+				if channel != 255 {
+					err := encoder.Encode(types.TCPMessage{Body: types.NoteOff{
+						Time:    time.Now(),
+						Channel: channel,
+						Key:     key,
 					}})
 					if err != nil {
 						common.Cont(err)
 						notesChan <- msg
 						reconnect = true
 					}
-				default:
-					log.Println("Unknown message type:", v)
 				}
-			}()
-		}
+			case channel.ProgramChange:
+				channel := channels.CheckChannel(v.Channel(), csvRecords)
+				if channel != 255 {
+					err := encoder.Encode(types.TCPMessage{Body: types.ProgramChange{
+						Time:    time.Now(),
+						Channel: channel,
+						Program: v.Program(),
+					}})
+					if err != nil {
+						common.Cont(err)
+						notesChan <- msg
+						reconnect = true
+					}
+				}
+			case channel.Aftertouch:
+				channel := channels.CheckChannel(v.Channel(), csvRecords)
+				if channel != 255 {
+					err := encoder.Encode(types.TCPMessage{Body: types.Aftertouch{
+						Time:     time.Now(),
+						Channel:  channel,
+						Pressure: v.Pressure(),
+					}})
+					if err != nil {
+						common.Cont(err)
+						notesChan <- msg
+						reconnect = true
+					}
+				}
+
+			case channel.ControlChange:
+				channel := channels.CheckChannel(v.Channel(), csvRecords)
+				if channel != 255 {
+					err := encoder.Encode(types.TCPMessage{Body: types.ControlChange{
+						Time:       time.Now(),
+						Channel:    channel,
+						Controller: v.Controller(),
+						Value:      v.Value(),
+					}})
+					if err != nil {
+						common.Cont(err)
+						notesChan <- msg
+						reconnect = true
+					}
+				}
+			case channel.NoteOffVelocity:
+				channel := channels.CheckChannel(v.Channel(), csvRecords)
+				key := channels.CheckOffset(v.Channel(), v.Key(), csvRecords)
+				if channel != 255 {
+					err := encoder.Encode(types.TCPMessage{Body: types.NoteOffVelocity{
+						Time:     time.Now(),
+						Channel:  channel,
+						Key:      key,
+						Velocity: v.Velocity(),
+					}})
+					if err != nil {
+						common.Cont(err)
+						notesChan <- msg
+						reconnect = true
+					}
+				}
+			case channel.Pitchbend:
+				channel := channels.CheckChannel(v.Channel(), csvRecords)
+				if channel != 255 {
+					err := encoder.Encode(types.TCPMessage{Body: types.Pitchbend{
+						Time:     time.Now(),
+						Channel:  channel,
+						Value:    v.Value(),
+						AbsValue: v.AbsValue(),
+					}})
+					if err != nil {
+						common.Cont(err)
+						notesChan <- msg
+						reconnect = true
+					}
+				}
+			case channel.PolyAftertouch:
+				channel := channels.CheckChannel(v.Channel(), csvRecords)
+				key := channels.CheckOffset(v.Channel(), v.Key(), csvRecords)
+				if channel != 255 {
+					err := encoder.Encode(types.TCPMessage{Body: types.PolyAftertouch{
+						Time:     time.Now(),
+						Channel:  channel,
+						Key:      key,
+						Pressure: v.Pressure(),
+					}})
+					if err != nil {
+						common.Cont(err)
+						notesChan <- msg
+						reconnect = true
+					}
+				}
+			case types.Raw:
+				err := encoder.Encode(types.TCPMessage{Body: types.Raw{
+					Time: v.Time,
+					Data: v.Data,
+				}})
+				if err != nil {
+					common.Cont(err)
+					notesChan <- msg
+					reconnect = true
+				}
+			default:
+				log.Println("Unknown message type:", v)
+			}
+		}()
 	}
+	wg.Done()
 }
 
 func midiClient(midiPort int, delay int, notesChan chan interface{}, in midi.In) {
@@ -349,113 +359,106 @@ func midiClient(midiPort int, delay int, notesChan chan interface{}, in midi.In)
 }
 
 // Listen for midi notes coming back so they can be printed
-func midiClientFeedback(serverIP string, serverPort int, protocol string, writers []*writer.Writer, out midi.Out, midiTuxChan chan types.MidiTuxMessage) {
+func midiClientFeedback(wg *sync.WaitGroup, closedChan chan struct{}, conn net.Conn, writers []*writer.Writer, out midi.Out, midiTuxChan chan types.MidiTuxMessage) {
+
+	var t types.TCPMessage
+	dec := gob.NewDecoder(conn)
 
 	for {
-		reconnect := false
-
-		conn := dial(serverIP, serverPort, protocol)
-		dec := gob.NewDecoder(conn)
-
-		for !reconnect {
-			var t types.TCPMessage
-			err := dec.Decode(&t)
-			if err == io.EOF {
-				log.Println("Feedback connection closed by server.")
-				conn.Close()
-				reconnect = true
-				continue
-			}
-			if err != nil {
-				common.Cont(err)
-			} else {
-				// print with midiTux
-				switch m := t.Body.(type) {
-				case types.NoteOn:
-					ms := common.HandleMs(m.Time)
-					common.Cont(writer.NoteOn(writers[m.Channel], m.Key, m.Velocity))
-					midiTuxChan <- types.MidiTuxMessage{
-						Color: color.FgHiGreen,
-						T:     t.Body,
-						Ms:    ms,
-					}
-				case types.NoteOff:
-					ms := common.HandleMs(m.Time)
-					common.Cont(writer.NoteOff(writers[m.Channel], m.Key))
-					midiTuxChan <- types.MidiTuxMessage{
-						Color: color.FgHiRed,
-						T:     t.Body,
-						Ms:    ms,
-					}
-				case types.ProgramChange:
-					ms := common.HandleMs(m.Time)
-					common.Cont(writer.ProgramChange(writers[m.Channel], m.Program))
-					midiTuxChan <- types.MidiTuxMessage{
-						Color: color.FgHiYellow,
-						T:     t.Body,
-						Ms:    ms,
-					}
-				case types.Aftertouch:
-					ms := common.HandleMs(m.Time)
-					common.Cont(writer.Aftertouch(writers[m.Channel], m.Pressure))
-					midiTuxChan <- types.MidiTuxMessage{
-						Color: color.FgHiBlue,
-						T:     t.Body,
-						Ms:    ms,
-					}
-				case types.ControlChange:
-					ms := common.HandleMs(m.Time)
-					common.Cont(writer.ControlChange(writers[m.Channel], m.Controller, m.Value))
-					midiTuxChan <- types.MidiTuxMessage{
-						Color: color.FgHiMagenta,
-						T:     t.Body,
-						Ms:    ms,
-					}
-				case types.NoteOffVelocity:
-					ms := common.HandleMs(m.Time)
-					common.Cont(writer.NoteOffVelocity(writers[m.Channel], m.Key, m.Velocity))
-					midiTuxChan <- types.MidiTuxMessage{
-						Color: color.FgYellow,
-						T:     t.Body,
-						Ms:    ms,
-					}
-				case types.Pitchbend:
-					ms := common.HandleMs(m.Time)
-					common.Cont(writer.Pitchbend(writers[m.Channel], m.Value))
-					midiTuxChan <- types.MidiTuxMessage{
-						Color: color.FgMagenta,
-						T:     t.Body,
-						Ms:    ms,
-					}
-				case types.PolyAftertouch:
-					ms := common.HandleMs(m.Time)
-					common.Cont(writer.PolyAftertouch(writers[m.Channel], m.Key, m.Pressure))
-					midiTuxChan <- types.MidiTuxMessage{
-						Color: color.FgCyan,
-						T:     t.Body,
-						Ms:    ms,
-					}
-				case types.Raw:
-					ms := common.HandleMs(m.Time)
-					if common.CheckAllNotesOff(m.Data) {
-						// all notes off expansion
-						common.ExpandAllNotesOff(m, ms, midiTuxChan, out)
-					} else {
-						// write the raw bytes to the MIDI device
-						_, err := out.Write(m.Data)
-						common.Cont(err)
-					}
-					midiTuxChan <- types.MidiTuxMessage{
-						Color: color.FgBlue,
-						T:     t.Body,
-						Ms:    ms,
-					}
-				default:
-					log.Println("Unknown message type:", m)
+		err := dec.Decode(&t)
+		if err == io.EOF {
+			log.Println("Connection closed by server.")
+			closedChan <- struct{}{}
+			wg.Done()
+			return
+		}
+		if err != nil {
+			common.Cont(err)
+		} else {
+			// print with midiTux
+			switch m := t.Body.(type) {
+			case types.NoteOn:
+				ms := common.HandleMs(m.Time)
+				common.Cont(writer.NoteOn(writers[m.Channel], m.Key, m.Velocity))
+				midiTuxChan <- types.MidiTuxMessage{
+					Color: color.FgHiGreen,
+					T:     t.Body,
+					Ms:    ms,
 				}
-
+			case types.NoteOff:
+				ms := common.HandleMs(m.Time)
+				common.Cont(writer.NoteOff(writers[m.Channel], m.Key))
+				midiTuxChan <- types.MidiTuxMessage{
+					Color: color.FgHiRed,
+					T:     t.Body,
+					Ms:    ms,
+				}
+			case types.ProgramChange:
+				ms := common.HandleMs(m.Time)
+				common.Cont(writer.ProgramChange(writers[m.Channel], m.Program))
+				midiTuxChan <- types.MidiTuxMessage{
+					Color: color.FgHiYellow,
+					T:     t.Body,
+					Ms:    ms,
+				}
+			case types.Aftertouch:
+				ms := common.HandleMs(m.Time)
+				common.Cont(writer.Aftertouch(writers[m.Channel], m.Pressure))
+				midiTuxChan <- types.MidiTuxMessage{
+					Color: color.FgHiBlue,
+					T:     t.Body,
+					Ms:    ms,
+				}
+			case types.ControlChange:
+				ms := common.HandleMs(m.Time)
+				common.Cont(writer.ControlChange(writers[m.Channel], m.Controller, m.Value))
+				midiTuxChan <- types.MidiTuxMessage{
+					Color: color.FgHiMagenta,
+					T:     t.Body,
+					Ms:    ms,
+				}
+			case types.NoteOffVelocity:
+				ms := common.HandleMs(m.Time)
+				common.Cont(writer.NoteOffVelocity(writers[m.Channel], m.Key, m.Velocity))
+				midiTuxChan <- types.MidiTuxMessage{
+					Color: color.FgYellow,
+					T:     t.Body,
+					Ms:    ms,
+				}
+			case types.Pitchbend:
+				ms := common.HandleMs(m.Time)
+				common.Cont(writer.Pitchbend(writers[m.Channel], m.Value))
+				midiTuxChan <- types.MidiTuxMessage{
+					Color: color.FgMagenta,
+					T:     t.Body,
+					Ms:    ms,
+				}
+			case types.PolyAftertouch:
+				ms := common.HandleMs(m.Time)
+				common.Cont(writer.PolyAftertouch(writers[m.Channel], m.Key, m.Pressure))
+				midiTuxChan <- types.MidiTuxMessage{
+					Color: color.FgCyan,
+					T:     t.Body,
+					Ms:    ms,
+				}
+			case types.Raw:
+				ms := common.HandleMs(m.Time)
+				if common.CheckAllNotesOff(m.Data) {
+					// all notes off expansion
+					common.ExpandAllNotesOff(m, ms, midiTuxChan, out)
+				} else {
+					// write the raw bytes to the MIDI device
+					_, err := out.Write(m.Data)
+					common.Cont(err)
+				}
+				midiTuxChan <- types.MidiTuxMessage{
+					Color: color.FgBlue,
+					T:     t.Body,
+					Ms:    ms,
+				}
+			default:
+				log.Println("Unknown message type:", m)
 			}
 		}
 	}
-
 }

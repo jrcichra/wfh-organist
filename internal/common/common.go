@@ -135,6 +135,28 @@ func SetupCloseHandler(out midi.Out, stopChan chan bool) {
 	}()
 }
 
+func GetMidiInput(drv *driver.Driver, midiPort int) midi.In {
+	ins, err := drv.Ins()
+	Must(err)
+	if len(ins)-1 < midiPort {
+		log.Fatalf("Too few MIDI IN Ports found. Wanted Index: %d. Max Index: %d\n", midiPort, len(ins)-1)
+	}
+	in := ins[midiPort]
+	Must(in.Open())
+	return in
+}
+
+func GetMidiOutput(drv *driver.Driver, midiPort int) midi.Out {
+	outs, err := drv.Outs()
+	Must(err)
+	if len(outs)-1 < midiPort {
+		log.Fatalf("Too few MIDI OUT Ports found. Wanted Index: %d. Max Index: %d\n", midiPort, len(outs)-1)
+	}
+	out := outs[midiPort]
+	Must(out.Open())
+	return out
+}
+
 func RegisterGobTypes() {
 	gob.Register(types.NoteOn{})
 	gob.Register(types.NoteOff{})

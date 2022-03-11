@@ -28,7 +28,8 @@ func main() {
 	stdinMode := flag.Bool("stdin", false, "read from stdin")
 	delay := flag.Int("delay", 0, "artificial delay in ms")
 	file := flag.String("file", "", "midi file to play")
-	controlVolume := flag.Bool("volume", true, "have WFHO control client volume")
+	dontControlVolume := flag.Bool("novolume", false, "have WFHO control client volume")
+	dontRecord := flag.Bool("norecord", false, "continuously record midi")
 
 	flag.Parse()
 
@@ -68,15 +69,15 @@ func main() {
 	// operate in client or server mode
 	switch strings.ToLower(*mode) {
 	case "server":
-		go server.Server(*midiPort, *serverPort, *protocol, midiTuxChan)
+		go server.Server(*midiPort, *serverPort, *protocol, midiTuxChan, *dontRecord)
 	case "client":
-		go client.Client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay, *file, midiTuxChan, *profile, *controlVolume)
+		go client.Client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay, *file, midiTuxChan, *profile, *dontControlVolume)
 	case "local":
 		// run both (unless serverIP is set, and sleep forever
 		if *serverIP == "localhost" {
-			go server.Server(*midiPort, *serverPort, *protocol, midiTuxChan)
+			go server.Server(*midiPort, *serverPort, *protocol, midiTuxChan, *dontRecord)
 		}
-		go client.Client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay, *file, midiTuxChan, *profile, *controlVolume)
+		go client.Client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay, *file, midiTuxChan, *profile, *dontControlVolume)
 	default:
 		log.Fatalf("Unknown mode: %s. Must be 'server' or 'client'\n", *mode)
 	}
