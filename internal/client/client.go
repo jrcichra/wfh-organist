@@ -71,7 +71,7 @@ func Client(midiPort int, serverIP string, serverPort int, protocol string, stdi
 	}
 
 	if !dontControlVolume {
-		volume.SetVolume(common.HIGH_VOLUME)
+		go volume.SetVolume(common.HIGH_VOLUME)
 	}
 
 	// http server for debug pprof
@@ -170,7 +170,7 @@ func sendNotesClient(wg *sync.WaitGroup, closedChan chan struct{}, conn net.Conn
 		go func() {
 			// reset the volume on the timeout
 			for range timeout {
-				volume.SetVolume(common.HIGH_VOLUME)
+				go volume.SetVolume(common.HIGH_VOLUME)
 				// make a new timer and overwrite the channel
 				t = &timer.Timer{}
 				timeout = t.New(10) // 10 seconds
@@ -190,7 +190,7 @@ func sendNotesClient(wg *sync.WaitGroup, closedChan chan struct{}, conn net.Conn
 		}
 
 		if !dontControlVolume {
-			volume.SetVolume(common.LOW_VOLUME)
+			go volume.SetVolume(common.LOW_VOLUME)
 			t.Reset()
 		}
 

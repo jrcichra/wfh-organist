@@ -27,7 +27,7 @@ func SetVolume(volume int) error {
 		}
 		path := filepath.Dir(exe)
 		log.Printf("Setting volume to: %d%%\n", volume)
-		return exec.Command(path+"/rx-volume.sh", strconv.Itoa(volume)).Run()
+		return exec.Command(path+"/volume.sh", strconv.Itoa(volume)).Run()
 	}
 
 	return nil
