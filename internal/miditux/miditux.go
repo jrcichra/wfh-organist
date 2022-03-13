@@ -2,6 +2,7 @@ package miditux
 
 import (
 	"log"
+	"strings"
 
 	"github.com/fatih/color"
 	"github.com/jrcichra/wfh-organist/internal/types"
@@ -17,11 +18,13 @@ func MidiTux(midiTuxChan chan types.MidiTuxMessage) {
 	}
 }
 
+const MILLI_WARNING = 125
+
 // this should only be called from the midiTux func
 func midiTuxPrint(clr color.Attribute, t interface{}, ms int64) {
 	slowStr := ""
-	if ms > 125 {
-		slowStr = "**"
+	if ms > MILLI_WARNING {
+		slowStr = strings.Repeat("*", int((ms-MILLI_WARNING)/10))
 	}
 	color.Set(clr)
 	switch m := t.(type) {
