@@ -18,14 +18,9 @@ func MidiTux(midiTuxChan chan types.MidiTuxMessage) {
 	}
 }
 
-const MILLI_WARNING = 125
-
 // this should only be called from the midiTux func
 func midiTuxPrint(clr color.Attribute, t interface{}, ms int64) {
-	slowStr := ""
-	if ms > MILLI_WARNING {
-		slowStr = strings.Repeat("*", int((ms-MILLI_WARNING)/10))
-	}
+	slowStr := strings.Repeat("*", int(ms/100))
 	color.Set(clr)
 	switch m := t.(type) {
 	case types.NoteOn:
