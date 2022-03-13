@@ -164,16 +164,17 @@ func sendNotesClient(wg *sync.WaitGroup, closedChan chan struct{}, conn net.Conn
 	var t *timer.Timer
 	if !dontControlVolume {
 		t = &timer.Timer{}
-		timeout := t.New(10) // 10 seconds
+		timeout := t.New(5)
 		t.Start()
 
 		go func() {
-			// reset the volume on the timeout
-			for range timeout {
+			for {
+				<-timeout
 				go volume.SetVolume(common.HIGH_VOLUME)
 				// make a new timer and overwrite the channel
 				t = &timer.Timer{}
-				timeout = t.New(10) // 10 seconds
+				timeout = t.New(5)
+				t.Start()
 			}
 		}()
 	}
@@ -187,11 +188,6 @@ func sendNotesClient(wg *sync.WaitGroup, closedChan chan struct{}, conn net.Conn
 		case <-closedChan:
 			reconnect = true
 			continue
-		}
-
-		if !dontControlVolume {
-			go volume.SetVolume(common.LOW_VOLUME)
-			t.Reset()
 		}
 
 		go func() {
@@ -217,6 +213,11 @@ func sendNotesClient(wg *sync.WaitGroup, closedChan chan struct{}, conn net.Conn
 						notesChan <- msg
 						reconnect = true
 					}
+					if !dontControlVolume {
+						go volume.SetVolume(common.LOW_VOLUME)
+						t.Reset()
+					}
+
 				}
 			case channel.NoteOff:
 				channel := channels.CheckChannel(v.Channel(), csvRecords)
