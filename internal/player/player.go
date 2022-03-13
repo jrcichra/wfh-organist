@@ -44,6 +44,7 @@ func PlayMidiFile(notesChan chan interface{}, file string, stopPlayingChan chan 
 						Channel:  v.Channel(),
 						Key:      v.Key(),
 						Velocity: v.Velocity(),
+						Time:     time.Now(),
 					}
 				} else {
 					notesChan <- v
@@ -53,6 +54,7 @@ func PlayMidiFile(notesChan chan interface{}, file string, stopPlayingChan chan 
 					notesChan <- types.NoteOff{
 						Channel: v.Channel(),
 						Key:     v.Key(),
+						Time:    time.Now(),
 					}
 				} else {
 					notesChan <- v
@@ -62,6 +64,7 @@ func PlayMidiFile(notesChan chan interface{}, file string, stopPlayingChan chan 
 					notesChan <- types.ProgramChange{
 						Channel: v.Channel(),
 						Program: v.Program(),
+						Time:    time.Now(),
 					}
 				} else {
 					notesChan <- v
@@ -72,6 +75,7 @@ func PlayMidiFile(notesChan chan interface{}, file string, stopPlayingChan chan 
 						Channel:    v.Channel(),
 						Controller: v.Controller(),
 						Value:      v.Value(),
+						Time:       time.Now(),
 					}
 				} else {
 					notesChan <- v
