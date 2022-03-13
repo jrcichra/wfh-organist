@@ -21,7 +21,7 @@ func MidiTux(midiTuxChan chan types.MidiTuxMessage) {
 // this should only be called from the midiTux func
 func midiTuxPrint(clr color.Attribute, t interface{}, ms int64) {
 	var slowStr string
-	if ms > 0 {
+	if ms/100 >= 0 {
 		slowStr = strings.Repeat("*", int(ms/100))
 	}
 	color.Set(clr)
