@@ -33,7 +33,7 @@ func Record(in midi.In, stop chan bool) {
 	for !external {
 
 		timer := timer.Timer{}
-		timeout := timer.New(10 * 60) // 10 minutes
+		timeout := timer.New(1 * 60)
 
 		var inbf bytes.Buffer
 		var outbf bytes.Buffer
