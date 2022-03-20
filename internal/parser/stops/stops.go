@@ -14,17 +14,14 @@ type Stop struct {
 
 type Group []Stop
 
-type Stops struct {
-	Swell   Group `yaml:"swell" json:"swell"`
-	Great   Group `yaml:"great" json:"great"`
-	Pedal   Group `yaml:"pedal" json:"pedal"`
-	General Group `yaml:"general" json:"general"`
+type Config struct {
+	Stops []map[string]Group `yaml:"stops" json:"stops"`
 }
 
-func ReadFile(filename string) *Stops {
+func ReadFile(filename string) *Config {
 	data, err := ioutil.ReadFile(filename)
 	common.Must(err)
-	stops := &Stops{}
+	stops := &Config{}
 	err = yaml.Unmarshal(data, stops)
 	common.Must(err)
 	return stops

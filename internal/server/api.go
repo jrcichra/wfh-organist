@@ -17,7 +17,7 @@ import (
 // send message from the api to the midi server
 
 // handle all the API endpoints
-func handleAPI(notesChan chan interface{}, stops *stops.Stops) http.Handler {
+func handleAPI(notesChan chan interface{}, stops *stops.Config) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Println("API request:", r.URL.Path)
 		switch r.URL.Path {
@@ -53,7 +53,7 @@ func handleAPI(notesChan chan interface{}, stops *stops.Stops) http.Handler {
 
 var stopPlayingChan = make(chan bool)
 
-func apiGetStops(w http.ResponseWriter, r *http.Request, stops *stops.Stops) {
+func apiGetStops(w http.ResponseWriter, r *http.Request, stops *stops.Config) {
 	// make sure it's a get
 	if r.Method != "GET" {
 		w.WriteHeader(http.StatusMethodNotAllowed)

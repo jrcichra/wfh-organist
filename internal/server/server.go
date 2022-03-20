@@ -18,7 +18,7 @@ import (
 	driver "gitlab.com/gomidi/rtmididrv"
 )
 
-func startHTTP(notesChan chan interface{}, stops *stops.Stops) {
+func startHTTP(notesChan chan interface{}, stops *stops.Config) {
 	// serve the website
 	http.Handle("/", http.FileServer(http.Dir("./gui/dist")))
 	//serve favicon
