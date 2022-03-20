@@ -7,6 +7,7 @@ require (
 	github.com/tarm/serial v0.0.0-20180830185346-98f6abe2eb07
 	gitlab.com/gomidi/midi v1.23.7
 	gitlab.com/gomidi/rtmididrv v0.14.0
+	gopkg.in/yaml.v2 v2.4.0
 )
 
 require (

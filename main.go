@@ -69,13 +69,13 @@ func main() {
 	// operate in client or server mode
 	switch strings.ToLower(*mode) {
 	case "server":
-		go server.Server(*midiPort, *serverPort, *protocol, midiTuxChan, *dontRecord)
+		go server.Server(*midiPort, *serverPort, *protocol, midiTuxChan, *dontRecord, *profile)
 	case "client":
 		go client.Client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay, *file, midiTuxChan, *profile, *dontControlVolume)
 	case "local":
 		// run both (unless serverIP is set, and sleep forever
 		if *serverIP == "localhost" {
-			go server.Server(*midiPort, *serverPort, *protocol, midiTuxChan, *dontRecord)
+			go server.Server(*midiPort, *serverPort, *protocol, midiTuxChan, *dontRecord, *profile)
 		}
 		go client.Client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay, *file, midiTuxChan, *profile, *dontControlVolume)
 	default:

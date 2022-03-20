@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/jrcichra/wfh-organist/internal/parser/stops"
 	"github.com/jrcichra/wfh-organist/internal/player"
 	"github.com/jrcichra/wfh-organist/internal/types"
 )
@@ -16,7 +17,7 @@ import (
 // send message from the api to the midi server
 
 // handle all the API endpoints
-func handleAPI(notesChan chan interface{}) http.Handler {
+func handleAPI(notesChan chan interface{}, stops *stops.Stops) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Println("API request:", r.URL.Path)
 		switch r.URL.Path {
@@ -42,6 +43,8 @@ func handleAPI(notesChan chan interface{}) http.Handler {
 			apiHandlePlay(w, r, notesChan)
 		case "/api/midi/file/stop":
 			apiHandleStop(w, r, notesChan)
+		case "/api/midi/stops":
+			apiGetStops(w, r, stops)
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -49,6 +52,19 @@ func handleAPI(notesChan chan interface{}) http.Handler {
 }
 
 var stopPlayingChan = make(chan bool)
+
+func apiGetStops(w http.ResponseWriter, r *http.Request, stops *stops.Stops) {
+	// make sure it's a get
+	if r.Method != "GET" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	// convert stops to json and then send
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(stops)
+
+}
 
 func apiHandleStat(w http.ResponseWriter, r *http.Request) {
 	// get a list of midi files in the midi directory

@@ -10,6 +10,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/jrcichra/wfh-organist/internal/common"
+	"github.com/jrcichra/wfh-organist/internal/parser/stops"
 	"github.com/jrcichra/wfh-organist/internal/recorder"
 	"github.com/jrcichra/wfh-organist/internal/types"
 	"gitlab.com/gomidi/midi"
@@ -17,19 +18,19 @@ import (
 	driver "gitlab.com/gomidi/rtmididrv"
 )
 
-func startHTTP(notesChan chan interface{}) {
+func startHTTP(notesChan chan interface{}, stops *stops.Stops) {
 	// serve the website
 	http.Handle("/", http.FileServer(http.Dir("./gui/dist")))
 	//serve favicon
 	http.Handle("/favicon.ico", http.FileServer(http.Dir("./gui/build/favicon.ico")))
 	// serve /api
-	http.Handle("/api/midi/", handleAPI(notesChan))
+	http.Handle("/api/midi/", handleAPI(notesChan, stops))
 	// http listener
 	log.Println("HTTP Listening on 8080")
 	http.ListenAndServe(":8080", nil)
 }
 
-func Server(midiPort int, serverPort int, protocol string, midiTuxChan chan types.MidiTuxMessage, dontRecord bool) {
+func Server(midiPort int, serverPort int, protocol string, midiTuxChan chan types.MidiTuxMessage, dontRecord bool, profile string) {
 
 	// wait for someone to connect to the server
 	l, err := net.Listen(protocol, ":"+strconv.Itoa(serverPort))
@@ -55,8 +56,10 @@ func Server(midiPort int, serverPort int, protocol string, midiTuxChan chan type
 		go recorder.Record(in, stopRecording)
 	}
 
+	stops := stops.ReadFile(profile + "stops.yaml")
+
 	// also can accept notes from the HTTP API
-	go startHTTP(notesChan)
+	go startHTTP(notesChan, stops)
 
 	// keep accepting connections
 	for {
