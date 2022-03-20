@@ -1,6 +1,6 @@
-# last bit on code is assumed to be 00 for off and 7f for on\
+# last bit on code is assumed to be 00 for off and 7f for on
 stops:
-  - swell:
+  - Swell:
       - name: "Bourdon 16'"
         code: "b0 63 00 b0 62 0b b0 06"
       - name: "Gedackt 8'"
@@ -25,7 +25,7 @@ stops:
         code: "b0 63 01 b0 62 30 b0 06"
       - name: "MIDI to Swell"
         code: "b0 63 01 b0 62 5e b0 06"
-  - great:
+  - Great:
       - name: "Principal 8'"
         code: "b1 63 00 b1 62 1f b1 06"
       - name: "Gedackt 8'"
@@ -46,7 +46,7 @@ stops:
         code: "b1 63 01 b1 62 77 b1 06"
       - name: "MIDI to Great"
         code: "b1 63 01 b1 62 5f b1 06"
-  - pedal:
+  - Pedal:
       - name: "Bourdon 16'"
         code: "b2 63 00 b2 62 0c b2 06"
       - name: "Lieb lich gedackt 16'"
@@ -69,7 +69,7 @@ stops:
         code: "b2 63 01 b2 62 77 b2 06"
       - name: "MIDI to Pedal"
         code: "b2 63 01 b2 62 60 b2 06"
-  - general:
+  - General:
       - name: "Memory B"
       - name: "Add Stops"
       - name: "Bass Coupler"

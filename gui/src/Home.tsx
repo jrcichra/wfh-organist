@@ -120,7 +120,7 @@ function Home() {
           console.log(stop[name]);
           return (
             <>
-              <p className="title">{name}</p>
+              <p className="title">{`${name} Organ`}</p>
               <div className="col">
                 {stop[name].map((stop: StopType) => {
                   return (
