@@ -66,16 +66,24 @@ func main() {
 	midiTuxChan := make(chan types.MidiTuxMessage, 100)
 	go miditux.MidiTux(midiTuxChan)
 
+	server := server.Server{
+		MidiPort:    *midiPort,
+		Port:        *serverPort,
+		Profile:     *profile,
+		DontRecord:  *dontRecord,
+		MidiTuxChan: midiTuxChan,
+	}
+
 	// operate in client or server mode
 	switch strings.ToLower(*mode) {
 	case "server":
-		go server.Server(*midiPort, *serverPort, *protocol, midiTuxChan, *dontRecord, *profile)
+		go server.Run()
 	case "client":
 		go client.Client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay, *file, midiTuxChan, *profile, *dontControlVolume)
 	case "local":
 		// run both (unless serverIP is set, and sleep forever
 		if *serverIP == "localhost" {
-			go server.Server(*midiPort, *serverPort, *protocol, midiTuxChan, *dontRecord, *profile)
+			go server.Run()
 		}
 		go client.Client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay, *file, midiTuxChan, *profile, *dontControlVolume)
 	default:

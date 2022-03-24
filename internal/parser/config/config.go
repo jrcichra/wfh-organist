@@ -1,4 +1,4 @@
-package stops
+package config
 
 import (
 	"io/ioutil"
@@ -8,8 +8,9 @@ import (
 )
 
 type Stop struct {
-	Name string `yaml:"name" json:"name"`
-	Code string `yaml:"code" json:"code"`
+	Name    string `yaml:"name" json:"name"`
+	Code    string `yaml:"code" json:"code"`
+	Pressed bool
 }
 
 type Group []Stop
@@ -18,11 +19,9 @@ type Config struct {
 	Stops []map[string]Group `yaml:"stops" json:"stops"`
 }
 
-func ReadFile(filename string) *Config {
-	data, err := ioutil.ReadFile(filename)
+func (c *Config) Read(profile string) {
+	data, err := ioutil.ReadFile(profile + "/stops.yaml")
 	common.Must(err)
-	stops := &Config{}
-	err = yaml.Unmarshal(data, stops)
+	err = yaml.Unmarshal(data, c)
 	common.Must(err)
-	return stops
 }
