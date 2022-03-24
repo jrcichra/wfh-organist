@@ -8,9 +8,8 @@ import (
 )
 
 type Stop struct {
-	Name    string `yaml:"name" json:"name"`
-	Code    string `yaml:"code" json:"code"`
-	Pressed bool
+	Name string `yaml:"name" json:"name"`
+	Code string `yaml:"code" json:"code"`
 }
 
 type Group []Stop

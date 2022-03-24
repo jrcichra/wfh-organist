@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jrcichra/wfh-organist/internal/player"
@@ -20,8 +22,8 @@ func (s *Server) handleAPI() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Println("API request:", r.URL.Path)
 		switch r.URL.Path {
-		case "/api/midi/raw":
-			s.apiHandleRaw(w, r)
+		case "/api/midi/pushstop":
+			s.apiHandlePushStop(w, r)
 		case "/api/midi/files":
 			s.apiHandleStat(w, r)
 		case "/api/midi/file/play":
@@ -47,7 +49,7 @@ func (s *Server) apiGetStops(w http.ResponseWriter, r *http.Request) {
 
 	// convert stops to json and then send
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(s.stops) // expects *config.Config
+	json.NewEncoder(w).Encode(s.state.GetStopsForAPI())
 
 }
 
@@ -112,7 +114,7 @@ func (s *Server) apiHandlePlay(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (s *Server) apiHandleRaw(w http.ResponseWriter, r *http.Request) {
+func (s *Server) apiHandlePushStop(w http.ResponseWriter, r *http.Request) {
 	// make sure it's a post
 	if r.Method != "POST" {
 		log.Println("Not a POST request")
@@ -120,40 +122,63 @@ func (s *Server) apiHandleRaw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// get the id for the stop from the body
 	scanner := bufio.NewScanner(r.Body)
-
 	scanner.Split(bufio.ScanWords)
-	// keep count, send 3 at a time
-	count := 0
-	// hold bytes
-	bytes := make([]byte, 0)
-	for scanner.Scan() {
-		//convert token string to hex code
-		text := scanner.Text()
-		// each token must be size 2
-		if len(text) != 2 {
-			panic("Token must be size 2")
-		}
-		hexToken, err := hex.DecodeString(text)
+	if !scanner.Scan() {
+		log.Println("No id specified")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	id := scanner.Text()
+
+	intID, err := strconv.Atoi(id)
+	if err != nil {
+		log.Println("Invalid id")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	// get the stop string from the state
+	stop, pressed := s.state.GetStop(intID)
+	if stop == "" {
+		log.Println("Stop not found")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	// split the stop by whitespace
+	byteStrSets := strings.Split(stop, " ")
+	var bytes []byte
+	for _, byteStr := range byteStrSets {
+		bite, err := hex.DecodeString(byteStr)
 		if err != nil {
-			log.Println(err)
-			break
+			log.Println("Invalid hex string")
+			w.WriteHeader(http.StatusBadRequest)
+			return
 		}
-		// append to bytes
-		bytes = append(bytes, hexToken...)
-		if count >= 2 {
-			//send hex code to channel
-			s.notesChan <- types.Raw{
-				Time: time.Now(),
-				Data: bytes,
-			}
-			count = 0
-			// clear bytes
-			bytes = make([]byte, 0)
-		} else {
-			count++
+		bytes = append(bytes, bite...)
+	}
+
+	// add final byte opposite of pressed status
+	if pressed {
+		bytes = append(bytes, 0x00)
+	} else {
+		bytes = append(bytes, 0x7f)
+	}
+
+	// send in chunks of 3
+	for i := 0; i < len(bytes); i += 3 {
+		// send the stop to the notes channel
+		s.notesChan <- types.Raw{
+			Time: time.Now(),
+			Data: bytes[i : i+3],
 		}
 	}
+
+	// toggle the state of the press
+	s.state.ToggleStop(intID)
+
 	// send a success message
 	w.WriteHeader(http.StatusOK)
 

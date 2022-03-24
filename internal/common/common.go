@@ -157,6 +157,17 @@ func GetMidiOutput(drv *driver.Driver, midiPort int) midi.Out {
 	return out
 }
 
+//TODO : good candidate for generics
+func Contains(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+
+	return false
+}
+
 func RegisterGobTypes() {
 	gob.Register(types.NoteOn{})
 	gob.Register(types.NoteOff{})

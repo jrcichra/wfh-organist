@@ -22,9 +22,20 @@ type Stop struct {
 	gorm.Model
 	Name    string
 	Code    string
+	Pressed bool
 	GroupID int
 	Group   Group
 }
+
+type APIStop struct {
+	ID      int    `json:"id"`
+	Name    string `json:"name"`
+	Pressed bool   `json:"pressed"`
+}
+
+type APIGroup []APIStop
+
+type APIState []map[string]APIGroup
 
 func (s *State) Open(profile string) {
 	var err error
@@ -53,4 +64,63 @@ func (s *State) reconcile() {
 			}
 		}
 	}
+}
+
+func (s *State) GetStopsForAPI() *APIState {
+
+	type APIStopWithGroup struct {
+		APIStop
+		Group string
+	}
+
+	var apiStops []APIStopWithGroup
+	s.db.Model(&Stop{}).Select([]string{"stops.id", "stops.name", "stops.pressed", "groups.name as \"group\""}).Joins("JOIN groups ON stops.group_id = groups.id").Order("stops.created_at").Find(&apiStops)
+
+	// get unique list of groups from apiStops
+	var groups []string
+	for _, apiStop := range apiStops {
+		if !common.Contains(groups, apiStop.Group) {
+			groups = append(groups, apiStop.Group)
+		}
+	}
+
+	var apiState APIState
+	for _, group := range groups {
+		var apiGroup []APIStop
+		for _, stop := range apiStops {
+			if stop.Group == group {
+				apiGroup = append(apiGroup, stop.APIStop)
+			}
+		}
+		apiState = append(apiState, map[string]APIGroup{group: apiGroup})
+	}
+
+	return &apiState
+}
+
+func (s *State) GetStop(id int) (string, bool) {
+	type StopCodePressed struct {
+		Code    string
+		Pressed bool
+	}
+	var stopCodePressed StopCodePressed
+	s.db.Model(&Stop{}).Select([]string{"code", "pressed"}).Where("id = ?", id).First(&stopCodePressed)
+	return stopCodePressed.Code, stopCodePressed.Pressed
+}
+
+func (s *State) ToggleStop(id int) {
+	// check if the stop is pressed
+	type StopPressed struct {
+		Pressed bool
+	}
+	var stop StopPressed
+	s.db.Model(&Stop{}).Select([]string{"pressed"}).Where("id = ?", id).First(&stop)
+
+	// toggle it in the database
+	if stop.Pressed {
+		s.db.Model(&Stop{}).Where("id = ?", id).Update("pressed", false)
+	} else {
+		s.db.Model(&Stop{}).Where("id = ?", id).Update("pressed", true)
+	}
+
 }

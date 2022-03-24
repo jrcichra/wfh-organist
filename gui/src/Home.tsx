@@ -17,8 +17,9 @@ const videoOptions: MediaTrackConstraints = {
 };
 
 type StopType = {
+  id: number;
   name: string;
-  code: string;
+  pressed: boolean;
 };
 
 function Home() {
@@ -87,7 +88,7 @@ function Home() {
     fetch("/api/midi/stops")
       .then((res) => res.json())
       .then((data) => {
-        setStops(data.stops);
+        setStops(data);
       });
   }, []);
 
@@ -126,8 +127,8 @@ function Home() {
                   return (
                     <RockerTab
                       text={stop.name}
-                      on={stop.code ? stop.code + " 7f" : undefined}
-                      off={stop.code ? stop.code + " 00" : undefined}
+                      id={`${stop.id}`}
+                      initalPressed={stop.pressed}
                     />
                   );
                 })}
