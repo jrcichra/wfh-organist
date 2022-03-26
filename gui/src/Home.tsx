@@ -45,7 +45,7 @@ function Home() {
     for (let i = 0; i < tempStops.length; i++) {
       const key = Object.keys(tempStops[i])[0];
       for (let j = 0; j < tempStops[i][key].length; j++) {
-        if (tempStops[i][key][j].id == id) {
+        if (tempStops[i][key][j].id === id) {
           tempStops[i][key][j].pressed = value;
         }
       }
@@ -160,7 +160,7 @@ function Home() {
                   return (
                     <RockerTab
                       text={stop.name}
-                      id={`${stop.id}`}
+                      id={stop.id}
                       pressed={stop.pressed}
                       setPressed={setPressed}
                     />

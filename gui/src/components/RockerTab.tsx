@@ -8,7 +8,7 @@ function RockerTab({
   setPressed,
 }: {
   text: string;
-  id: string;
+  id: number;
   pressed: boolean;
   setPressed: any;
 }) {
@@ -36,7 +36,7 @@ function RockerTab({
           headers: {
             "Content-Type": "text/plain",
           },
-          body: id,
+          body: String(id),
         });
       } else {
         isMounted.current = true;
