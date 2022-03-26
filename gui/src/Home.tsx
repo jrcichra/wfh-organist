@@ -37,6 +37,40 @@ function Home() {
   const [midiFiles, setMidiFiles]: [any, any] = useState([]);
 
   const [stops, setStops]: [any, any] = useState([]);
+  const [setMode, setSetMode]: [any, any] = useState("false");
+
+  function setPressed(id: number, value: boolean) {
+    let tempStops: any = [...stops];
+
+    for (let i = 0; i < tempStops.length; i++) {
+      const key = Object.keys(tempStops[i])[0];
+      for (let j = 0; j < tempStops[i][key].length; j++) {
+        if (tempStops[i][key][j].id == id) {
+          tempStops[i][key][j].pressed = value;
+        }
+      }
+    }
+    setStops(tempStops);
+  }
+
+  useEffect(() => {
+
+    if (setMode === "true") {
+      setSetMode("false");
+      //store the stops under the value of selectedPiston
+      fetch("/api/midi/setstops", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(
+          stops
+        ),
+      });
+    }
+    return;
+
+  }, [selectedPiston]);
 
   useEffect(() => {
     if (new URLSearchParams(location.search).get("mode") === "server") {
@@ -118,7 +152,6 @@ function Home() {
       <div className="stop-container">
         {stops.map((stop: any) => {
           const name: string = Object.keys(stop)[0];
-          console.log(stop[name]);
           return (
             <>
               <p className="title">{`${name} Organ`}</p>
@@ -128,7 +161,8 @@ function Home() {
                     <RockerTab
                       text={stop.name}
                       id={`${stop.id}`}
-                      initalPressed={stop.pressed}
+                      pressed={stop.pressed}
+                      setPressed={setPressed}
                     />
                   );
                 })}
@@ -158,7 +192,7 @@ function Home() {
         <Stop />
         <p className="title">General Pistons</p>
         <div className="col">
-          <Piston text="Set" />
+          <Piston text="Set" value="true" set={setSetMode} />
           <span className="pistonGap"></span>
           <Piston text="1" value="1" set={setSelectedPiston} />
           <Piston text="2" value="2" set={setSelectedPiston} />

@@ -4,23 +4,24 @@ import "./RockerTab.css";
 function RockerTab({
   text,
   id,
-  initalPressed,
+  pressed,
+  setPressed,
 }: {
   text: string;
   id: string;
-  initalPressed: boolean;
+  pressed: boolean;
+  setPressed: any;
 }) {
   const [className, setClassName]: [string, any] = useState("button");
-  const [pressed, setPressed]: [boolean, any] = useState(initalPressed);
   const isMounted = useRef(false);
 
   useEffect(() => {
-    if (initalPressed) {
+    if (pressed) {
       setClassName("buttonActive");
     } else {
       setClassName("button");
     }
-  }, [initalPressed]);
+  }, [pressed]);
 
   useEffect(() => {
     (async () => {
@@ -44,9 +45,9 @@ function RockerTab({
   }, [pressed]);
 
   return (
-    <button onClick={() => setPressed(!pressed)} className={className}>
+    <button onClick={() => setPressed(id, !pressed)} className={className} >
       {text}
-    </button>
+    </button >
   );
 }
 
