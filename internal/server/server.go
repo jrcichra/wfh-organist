@@ -71,7 +71,7 @@ func (s *Server) Run() {
 	}
 
 	s.state = &state.State{}
-	s.state.Open(s.Profile)
+	s.state.Open(s.Profile, s.notesChan)
 
 	// also can accept notes from the HTTP API
 	go s.startHTTP()

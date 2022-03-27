@@ -2,16 +2,15 @@ package server
 
 import (
 	"bufio"
-	"encoding/hex"
 	"encoding/json"
 	"log"
 	"net/http"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/jrcichra/wfh-organist/internal/common"
 	"github.com/jrcichra/wfh-organist/internal/player"
+	"github.com/jrcichra/wfh-organist/internal/state"
 	"github.com/jrcichra/wfh-organist/internal/types"
 )
 
@@ -34,6 +33,8 @@ func (s *Server) handleAPI() http.Handler {
 			s.apiStops(w, r)
 		case "/api/midi/panic":
 			// s.apiHandlePanic(w, r)
+		case "/api/midi/piston":
+			s.apiHandlePiston(w, r)
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -41,6 +42,40 @@ func (s *Server) handleAPI() http.Handler {
 }
 
 var stopPlayingChan = make(chan bool)
+
+func (s *Server) apiHandlePiston(w http.ResponseWriter, r *http.Request) {
+	// make sure it's a post
+	if r.Method != "POST" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	// get the piston from the body
+	scanner := bufio.NewScanner(r.Body)
+	if !scanner.Scan() {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	piston := scanner.Text()
+	stops := s.state.GetPiston(piston)
+
+	// tell notes chan what stops to press
+	for _, stop := range stops {
+		id := stop.Group + "/" + stop.Name
+		// get the current state and compare to the desired state
+		pressed, err := s.state.GetPressed(id)
+		common.Cont(err)
+		if pressed && !stop.Pressed {
+			s.state.SetPressed(id, false)
+		} else if !pressed && stop.Pressed {
+			s.state.SetPressed(id, true)
+		}
+	}
+
+	// send json of new stops
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(stops)
+}
 
 func (s *Server) apiStops(w http.ResponseWriter, r *http.Request) {
 	// make sure it's a get
@@ -51,6 +86,27 @@ func (s *Server) apiStops(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(s.state.GetStopsForAPI())
 	case "POST":
 		w.WriteHeader(http.StatusOK)
+		// parse the json response (which is an array of APIStops)
+		var stops []state.APIStop
+		err := json.NewDecoder(r.Body).Decode(&stops)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		// get the query string
+		query := r.URL.Query()
+		// get the piston
+		piston := query.Get("piston")
+		// update the state of the piston if there is a piston
+		if piston != "" {
+			s.state.SetPiston(piston, stops)
+		} else {
+			// otherwise just update the current state
+			for _, stop := range stops {
+				s.state.SetPressed(stop.Group+"/"+stop.Name, stop.Pressed)
+			}
+		}
+
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
@@ -105,7 +161,6 @@ func (s *Server) apiHandlePlay(w http.ResponseWriter, r *http.Request) {
 
 	// get the filename from the body
 	scanner := bufio.NewScanner(r.Body)
-	scanner.Split(bufio.ScanWords)
 	if !scanner.Scan() {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -134,49 +189,11 @@ func (s *Server) apiHandlePushStop(w http.ResponseWriter, r *http.Request) {
 	}
 	id := scanner.Text()
 
-	// get the stop string from the state
-	code, err := s.state.GetStopCode(id)
-	if err != nil {
-		common.Cont(err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	// split the stop code by whitespace
-	byteStrSets := strings.Split(code, " ")
-	var bytes []byte
-	for _, byteStr := range byteStrSets {
-		bite, err := hex.DecodeString(byteStr)
-		if err != nil {
-			log.Println("Invalid hex string")
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		bytes = append(bytes, bite...)
-	}
-
-	// add final byte opposite of pressed status
-
 	pressed, err := s.state.GetPressed(id)
 	if err != nil {
 		common.Cont(err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
-	}
-
-	if pressed {
-		bytes = append(bytes, 0x00)
-	} else {
-		bytes = append(bytes, 0x7f)
-	}
-
-	// send in chunks of 3
-	for i := 0; i < len(bytes); i += 3 {
-		// send the stop to the notes channel
-		s.notesChan <- types.Raw{
-			Time: time.Now(),
-			Data: bytes[i : i+3],
-		}
 	}
 
 	// toggle the state of the press

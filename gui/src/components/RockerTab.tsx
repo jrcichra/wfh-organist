@@ -15,6 +15,16 @@ function RockerTab({
   const [className, setClassName]: [string, any] = useState("button");
   const isMounted = useRef(false);
 
+  function sendPushStop(id: string) {
+    fetch("/api/midi/pushstop", {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/plain",
+      },
+      body: id,
+    });
+  }
+
   useEffect(() => {
     if (pressed) {
       setClassName("buttonActive");
@@ -31,13 +41,6 @@ function RockerTab({
         } else {
           setClassName("button");
         }
-        fetch("/api/midi/pushstop", {
-          method: "POST",
-          headers: {
-            "Content-Type": "text/plain",
-          },
-          body: id,
-        });
       } else {
         isMounted.current = true;
       }
@@ -45,7 +48,13 @@ function RockerTab({
   }, [pressed]);
 
   return (
-    <button onClick={() => setPressed(id, !pressed)} className={className}>
+    <button
+      onClick={() => {
+        setPressed(id, !pressed);
+        sendPushStop(id);
+      }}
+      className={className}
+    >
       {name}
     </button>
   );

@@ -28,7 +28,8 @@ function Home() {
   const [remoteID, setRemoteID]: [any, any] = useState("");
   const peer: any = useRef(null);
 
-  const [selectedPiston, setSelectedPiston]: [any, any] = useState(null);
+  const [selectedPiston, setSelectedPiston]: [any, any] = useState("-");
+  const [pressedPiston, setPressedPiston]: [any, any] = useState(false);
 
   const [localStream, setLocalStream]: [any, any] = useState(null);
   const [remoteStream, setRemoteStream]: [any, any] = useState(null);
@@ -42,6 +43,9 @@ function Home() {
   var lastGroup: string;
 
   function setPressed(id: string, pressed: boolean) {
+    if (selectedPiston !== "-") {
+      setSelectedPiston("-");
+    }
     let tempStops: StopType[] = [...stops];
 
     tempStops.forEach((stop: StopType) => {
@@ -53,10 +57,17 @@ function Home() {
     setStops(tempStops);
   }
 
-  useEffect(() => {
-    if (setMode === "true") {
-      setSetMode("false");
-      //store the stops under the value of selectedPiston
+  function setPiston(id: string) {
+    setSelectedPiston(id);
+    setPressedPiston(true);
+    if (id === "-") {
+      // this is the cancel button. All stops should be raised
+      let tempStops: StopType[] = [...stops];
+      tempStops.forEach((stop: StopType) => {
+        stop.pressed = false;
+      });
+      // update the stops visually and on the backend
+      setStops(tempStops);
       fetch("/api/midi/stops", {
         method: "POST",
         headers: {
@@ -65,7 +76,37 @@ function Home() {
         body: JSON.stringify(stops),
       });
     }
-  }, [selectedPiston]);
+  }
+
+  useEffect(() => {
+    if (pressedPiston) {
+      if (setMode === "true") {
+        setSetMode("false");
+        // store the stops under the value of selectedPiston
+        fetch(`/api/midi/stops?piston=${selectedPiston}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(stops),
+        });
+      } else if (selectedPiston != "-") {
+        // ask to apply the state for this piston
+        fetch(`/api/midi/piston`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: String(selectedPiston),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            setStops(data);
+          });
+      }
+      setPressedPiston(false);
+    }
+  }, [selectedPiston, pressedPiston]);
 
   useEffect(() => {
     if (new URLSearchParams(location.search).get("mode") === "server") {
@@ -195,15 +236,15 @@ function Home() {
         <div className="col">
           <Piston text="Set" value="true" set={setSetMode} />
           <span className="pistonGap"></span>
-          <Piston text="1" value="1" set={setSelectedPiston} />
-          <Piston text="2" value="2" set={setSelectedPiston} />
-          <Piston text="3" value="3" set={setSelectedPiston} />
-          <Piston text="4" value="4" set={setSelectedPiston} />
-          <Piston text="5" value="5" set={setSelectedPiston} />
-          <Piston text="6" value="6" set={setSelectedPiston} />
-          <Piston text="7" value="7" set={setSelectedPiston} />
+          <Piston text="1" value="1" set={setPiston} />
+          <Piston text="2" value="2" set={setPiston} />
+          <Piston text="3" value="3" set={setPiston} />
+          <Piston text="4" value="4" set={setPiston} />
+          <Piston text="5" value="5" set={setPiston} />
+          <Piston text="6" value="6" set={setPiston} />
+          <Piston text="7" value="7" set={setPiston} />
           <span className="pistonGap"></span>
-          <Piston text="Cancel" value="-" set={setSelectedPiston} />
+          <Piston text="Cancel" value="-" set={setPiston} />
           <span className="pistonGap"></span>
           <Display value={selectedPiston} />
         </div>
