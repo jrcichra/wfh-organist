@@ -2,13 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import "./RockerTab.css";
 
 function RockerTab({
-  text,
+  name,
   id,
   pressed,
   setPressed,
 }: {
-  text: string;
-  id: number;
+  name: string;
+  id: string;
   pressed: boolean;
   setPressed: any;
 }) {
@@ -36,7 +36,7 @@ function RockerTab({
           headers: {
             "Content-Type": "text/plain",
           },
-          body: String(id),
+          body: id,
         });
       } else {
         isMounted.current = true;
@@ -45,9 +45,9 @@ function RockerTab({
   }, [pressed]);
 
   return (
-    <button onClick={() => setPressed(id, !pressed)} className={className} >
-      {text}
-    </button >
+    <button onClick={() => setPressed(id, !pressed)} className={className}>
+      {name}
+    </button>
   );
 }
 

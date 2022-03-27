@@ -17,8 +17,8 @@ const videoOptions: MediaTrackConstraints = {
 };
 
 type StopType = {
-  id: number;
   name: string;
+  group: string;
   pressed: boolean;
 };
 
@@ -39,37 +39,32 @@ function Home() {
   const [stops, setStops]: [any, any] = useState([]);
   const [setMode, setSetMode]: [any, any] = useState("false");
 
-  function setPressed(id: number, value: boolean) {
-    let tempStops: any = [...stops];
+  var lastGroup: string;
 
-    for (let i = 0; i < tempStops.length; i++) {
-      const key = Object.keys(tempStops[i])[0];
-      for (let j = 0; j < tempStops[i][key].length; j++) {
-        if (tempStops[i][key][j].id === id) {
-          tempStops[i][key][j].pressed = value;
-        }
+  function setPressed(id: string, pressed: boolean) {
+    let tempStops: StopType[] = [...stops];
+
+    tempStops.forEach((stop: StopType) => {
+      if (`${stop.group}/${stop.name}` === id) {
+        stop.pressed = pressed;
       }
-    }
+    });
+
     setStops(tempStops);
   }
 
   useEffect(() => {
-
     if (setMode === "true") {
       setSetMode("false");
       //store the stops under the value of selectedPiston
-      fetch("/api/midi/setstops", {
+      fetch("/api/midi/stops", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(
-          stops
-        ),
+        body: JSON.stringify(stops),
       });
     }
-    return;
-
   }, [selectedPiston]);
 
   useEffect(() => {
@@ -150,32 +145,38 @@ function Home() {
   return (
     <div className="wrapper">
       <div className="stop-container">
-        {stops.map((stop: any) => {
-          const name: string = Object.keys(stop)[0];
-          return (
-            <>
-              <p className="title">{`${name} Organ`}</p>
-              <div className="col">
-                {stop[name].map((stop: StopType) => {
-                  return (
-                    <RockerTab
-                      text={stop.name}
-                      id={stop.id}
-                      pressed={stop.pressed}
-                      setPressed={setPressed}
-                    />
-                  );
-                })}
-              </div>
-            </>
-          );
+        {stops.map((stop: StopType) => {
+          if (stop.group != lastGroup) {
+            lastGroup = stop.group;
+            return (
+              <>
+                <p className="title">{`${stop.group} Organ`}</p>
+                <div className="col">
+                  {stops.map((stop: StopType) => {
+                    if (stop.group === lastGroup) {
+                      return (
+                        <>
+                          <RockerTab
+                            name={stop.name}
+                            id={`${stop.group}/${stop.name}`}
+                            pressed={stop.pressed}
+                            setPressed={setPressed}
+                          />
+                        </>
+                      );
+                    }
+                  })}
+                </div>
+              </>
+            );
+          }
         })}
         <br></br>
         <br></br>
         <span className="pistonGap"></span>
         <span className="pistonGap"></span>
         <span className="pistonGap"></span>
-        <Panic data="b0 7b 00 b1 7b 00 b2 7b 00" />
+        <Panic />
         {midiFiles.map((file: string) => (
           <>
             <input

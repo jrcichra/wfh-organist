@@ -7,10 +7,10 @@ import (
 	"log"
 	"net/http"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
+	"github.com/jrcichra/wfh-organist/internal/common"
 	"github.com/jrcichra/wfh-organist/internal/player"
 	"github.com/jrcichra/wfh-organist/internal/types"
 )
@@ -29,9 +29,11 @@ func (s *Server) handleAPI() http.Handler {
 		case "/api/midi/file/play":
 			s.apiHandlePlay(w, r)
 		case "/api/midi/file/stop":
-			s.apiHandleStop(w, r)
+			s.apiHandleStopButton(w, r)
 		case "/api/midi/stops":
-			s.apiGetStops(w, r)
+			s.apiStops(w, r)
+		case "/api/midi/panic":
+			// s.apiHandlePanic(w, r)
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -40,17 +42,18 @@ func (s *Server) handleAPI() http.Handler {
 
 var stopPlayingChan = make(chan bool)
 
-func (s *Server) apiGetStops(w http.ResponseWriter, r *http.Request) {
+func (s *Server) apiStops(w http.ResponseWriter, r *http.Request) {
 	// make sure it's a get
-	if r.Method != "GET" {
+	switch r.Method {
+	case "GET":
+		// convert stops to json and then send
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(s.state.GetStopsForAPI())
+	case "POST":
+		w.WriteHeader(http.StatusOK)
+	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
 	}
-
-	// convert stops to json and then send
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(s.state.GetStopsForAPI())
-
 }
 
 func (s *Server) apiHandleStat(w http.ResponseWriter, r *http.Request) {
@@ -72,7 +75,7 @@ func (s *Server) apiHandleStat(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(files)
 }
 
-func (s *Server) apiHandleStop(w http.ResponseWriter, r *http.Request) {
+func (s *Server) apiHandleStopButton(w http.ResponseWriter, r *http.Request) {
 	select {
 	case stopPlayingChan <- true:
 		time.Sleep(time.Millisecond * 500)
@@ -124,7 +127,6 @@ func (s *Server) apiHandlePushStop(w http.ResponseWriter, r *http.Request) {
 
 	// get the id for the stop from the body
 	scanner := bufio.NewScanner(r.Body)
-	scanner.Split(bufio.ScanWords)
 	if !scanner.Scan() {
 		log.Println("No id specified")
 		w.WriteHeader(http.StatusBadRequest)
@@ -132,23 +134,16 @@ func (s *Server) apiHandlePushStop(w http.ResponseWriter, r *http.Request) {
 	}
 	id := scanner.Text()
 
-	intID, err := strconv.Atoi(id)
-	if err != nil {
-		log.Println("Invalid id")
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
 	// get the stop string from the state
-	stop, pressed := s.state.GetStop(intID)
-	if stop == "" {
-		log.Println("Stop not found")
+	code, err := s.state.GetStopCode(id)
+	if err != nil {
+		common.Cont(err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	// split the stop by whitespace
-	byteStrSets := strings.Split(stop, " ")
+	// split the stop code by whitespace
+	byteStrSets := strings.Split(code, " ")
 	var bytes []byte
 	for _, byteStr := range byteStrSets {
 		bite, err := hex.DecodeString(byteStr)
@@ -161,6 +156,14 @@ func (s *Server) apiHandlePushStop(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// add final byte opposite of pressed status
+
+	pressed, err := s.state.GetPressed(id)
+	if err != nil {
+		common.Cont(err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	if pressed {
 		bytes = append(bytes, 0x00)
 	} else {
@@ -177,7 +180,7 @@ func (s *Server) apiHandlePushStop(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// toggle the state of the press
-	s.state.ToggleStop(intID)
+	s.state.SetPressed(id, !pressed)
 
 	// send a success message
 	w.WriteHeader(http.StatusOK)
