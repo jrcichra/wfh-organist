@@ -1,3 +1,3 @@
 wfh-organist
 recordings
-state.db
+profiles/*/state

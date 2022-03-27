@@ -25,7 +25,7 @@ type State struct {
 func (s *State) Open(profile string) {
 	var err error
 	s.profile = profile
-	s.db, err = bitcask.Open(s.profile + "/state.db")
+	s.db, err = bitcask.Open(s.profile + "/state")
 	if err != nil {
 		common.Must(err)
 	}
