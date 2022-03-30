@@ -126,9 +126,21 @@ func (s *Server) apiStops(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
+
+			// send a program change to channels 0-2 (aka. human 1-3)
+			// the value of the last byte is the piston number
+			for i := 0; i < 3; i++ {
+				s.notesChan <- types.ProgramChange{
+					Time:    time.Now(),
+					Channel: uint8(i),
+					Program: uint8(piston),
+				}
+			}
+
 			s.state.SetPiston(piston, stops)
 		} else {
-			// otherwise just update the current state
+			// otherwise if there's no piston this must be the cancel
+
 			for _, stop := range stops {
 				pressed, err := s.state.GetStopAPI(stop)
 				common.Cont(err)
