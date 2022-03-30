@@ -43,13 +43,13 @@ function Home() {
   var lastGroup: string;
 
   function setPressed(id: string, pressed: boolean) {
-    if (selectedPiston !== "-") {
-      setSelectedPiston("-");
+    if (selectedPiston !== 0) {
+      setSelectedPiston(0);
     }
     let tempStops: StopType[] = [...stops];
 
     tempStops.forEach((stop: StopType) => {
-      if (`${stop.group}/${stop.name}` === id) {
+      if (`stop/${stop.group}/${stop.name}` === id) {
         stop.pressed = pressed;
       }
     });
@@ -57,10 +57,10 @@ function Home() {
     setStops(tempStops);
   }
 
-  function setPiston(id: string) {
+  function setPiston(id: number) {
     setSelectedPiston(id);
     setPressedPiston(true);
-    if (id === "-") {
+    if (id === 0) {
       // this is the cancel button. All stops should be raised
       let tempStops: StopType[] = [...stops];
       tempStops.forEach((stop: StopType) => {
@@ -90,7 +90,7 @@ function Home() {
           },
           body: JSON.stringify(stops),
         });
-      } else if (selectedPiston != "-") {
+      } else {
         // ask to apply the state for this piston
         fetch(`/api/midi/piston`, {
           method: "POST",
@@ -199,7 +199,7 @@ function Home() {
                         <>
                           <RockerTab
                             name={stop.name}
-                            id={`${stop.group}/${stop.name}`}
+                            id={`stop/${stop.group}/${stop.name}`}
                             pressed={stop.pressed}
                             setPressed={setPressed}
                           />
@@ -244,7 +244,7 @@ function Home() {
           <Piston text="6" value="6" set={setPiston} />
           <Piston text="7" value="7" set={setPiston} />
           <span className="pistonGap"></span>
-          <Piston text="Cancel" value="-" set={setPiston} />
+          <Piston text="Cancel" value="0" set={setPiston} />
           <span className="pistonGap"></span>
           <Display value={selectedPiston} />
         </div>

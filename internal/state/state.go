@@ -3,7 +3,7 @@ package state
 import (
 	"encoding/hex"
 	"errors"
-	"log"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -41,10 +41,12 @@ func (s *State) Open(profile string, notesChan chan interface{}) {
 }
 
 func (s *State) kvPut(key string, value string) error {
+	// log.Println("kvPut", key, value)
 	return s.db.Put([]byte(key), []byte(value))
 }
 
 func (s *State) kvGet(key string) (string, error) {
+	// log.Println("kvGet", key)
 	res, err := s.db.Get([]byte(key))
 	if err != nil && strings.Contains(err.Error(), "key not found") {
 		return "false", nil
@@ -55,12 +57,12 @@ func (s *State) kvGet(key string) (string, error) {
 	return string(res), nil
 }
 
-func (s *State) SetPressed(id string, value bool) {
-	log.Println("Setting", id, "pressed to", value)
-	err := s.kvPut("pressed/"+id, strconv.FormatBool(value))
+func (s *State) SetStopAPI(providedStop APIStop, value bool) {
+	id := s.GetStopAPIID(providedStop)
+	err := s.kvPut(id, strconv.FormatBool(value))
 	common.Cont(err)
 
-	code, err := s.GetStopCode(id)
+	code, err := s.GetStopCode(providedStop)
 	common.Cont(err)
 
 	_, err = s.codeToNotesChan(id, code, value)
@@ -68,8 +70,7 @@ func (s *State) SetPressed(id string, value bool) {
 
 }
 
-func (s *State) GetPressed(id string) (bool, error) {
-	pressed, err := s.kvGet("pressed/" + id)
+func (s *State) convertPressed(pressed string, err error) (bool, error) {
 	if err != nil {
 		return false, err
 	}
@@ -80,9 +81,18 @@ func (s *State) GetPressed(id string) (bool, error) {
 	return pressedBool, nil
 }
 
-func (s *State) GetStopCode(id string) (string, error) {
+func (s *State) GetStopAPI(providedStop APIStop) (bool, error) {
+	return s.convertPressed(s.kvGet(s.GetStopAPIID(providedStop)))
+}
+
+func (s *State) GetStop(providedStop config.Stop) (bool, error) {
+	return s.convertPressed(s.kvGet(s.GetStopID(providedStop)))
+}
+
+func (s *State) GetStopCode(providedStop APIStop) (string, error) {
+	id := s.GetStopAPIID(providedStop)
 	for _, stop := range s.config.Stops {
-		if stop.Group+"/"+stop.Name == id {
+		if s.GetStopID(stop) == id {
 			return stop.Code, nil
 		}
 	}
@@ -95,7 +105,7 @@ func (s *State) GetStopsForAPI() []APIStop {
 	apiStops := make([]APIStop, len(stops))
 
 	for i, stop := range stops {
-		pressed, err := s.GetPressed(stop.Group + "/" + stop.Name)
+		pressed, err := s.GetStop(stop)
 		common.Cont(err)
 		apiStops[i] = APIStop{Name: stop.Name, Group: stop.Group, Pressed: pressed}
 	}
@@ -103,18 +113,40 @@ func (s *State) GetStopsForAPI() []APIStop {
 	return apiStops
 }
 
-func (s *State) SetPiston(piston string, stops []APIStop) {
+func (s *State) SetPiston(piston int, stops []APIStop) {
 	for _, stop := range stops {
-		s.SetPressed("piston/"+piston+"/"+stop.Group+"/"+stop.Name, stop.Pressed)
+		id := s.GetPistonAPIID(piston, stop)
+		err := s.kvPut(id, strconv.FormatBool(stop.Pressed))
+		common.Cont(err)
 	}
 }
 
-func (s *State) GetPiston(piston string) []APIStop {
+func (s *State) GetStopAPIID(stop APIStop) string {
+	return fmt.Sprintf("stop/%s/%s", stop.Group, stop.Name)
+}
+
+func (s *State) GetStopID(stop config.Stop) string {
+	return fmt.Sprintf("stop/%s/%s", stop.Group, stop.Name)
+}
+
+func (s *State) GetPistonAPIID(piston int, stop APIStop) string {
+	return fmt.Sprintf("piston/%d/%s", piston, s.GetStopAPIID(stop))
+}
+func (s *State) GetPistonID(piston int, stop config.Stop) string {
+	return fmt.Sprintf("piston/%d/%s", piston, s.GetStopID(stop))
+}
+
+func (s *State) GetPistonStop(piston int, stop config.Stop) (bool, error) {
+	id := s.GetPistonID(piston, stop)
+	return s.convertPressed(s.kvGet(id))
+}
+
+func (s *State) GetPiston(piston int) []APIStop {
 	stops := s.config.Stops
 	apiStops := make([]APIStop, len(stops))
 
 	for i, stop := range stops {
-		pressed, err := s.GetPressed("piston/" + piston + "/" + stop.Group + "/" + stop.Name)
+		pressed, err := s.GetPistonStop(piston, stop)
 		common.Cont(err)
 		apiStops[i] = APIStop{Name: stop.Name, Group: stop.Group, Pressed: pressed}
 	}
@@ -150,4 +182,12 @@ func (s *State) codeToNotesChan(id string, code string, pressed bool) (bool, err
 	}
 
 	return pressed, nil
+}
+
+func (s *State) GetStopFromID(id string) (bool, error) {
+	return s.convertPressed(s.kvGet(id))
+}
+
+func (s *State) SetStopFromID(id string, value bool) error {
+	return s.kvPut(id, strconv.FormatBool(value))
 }

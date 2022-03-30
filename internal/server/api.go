@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/jrcichra/wfh-organist/internal/common"
@@ -56,19 +57,38 @@ func (s *Server) apiHandlePiston(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	piston := scanner.Text()
+	pistonStr := scanner.Text()
+
+	piston, err := strconv.Atoi(pistonStr)
+	if err != nil {
+		common.Cont(err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	// piston 0 = the cancel button
+
 	stops := s.state.GetPiston(piston)
+
+	// send a program change to channels 0-2 (aka. human 1-3)
+	// the value of the last byte is the piston number
+	for i := 0; i < 3; i++ {
+		s.notesChan <- types.ProgramChange{
+			Time:    time.Now(),
+			Channel: uint8(i),
+			Program: uint8(piston),
+		}
+	}
 
 	// tell notes chan what stops to press
 	for _, stop := range stops {
-		id := stop.Group + "/" + stop.Name
 		// get the current state and compare to the desired state
-		pressed, err := s.state.GetPressed(id)
+		pressed, err := s.state.GetStopAPI(stop)
 		common.Cont(err)
 		if pressed && !stop.Pressed {
-			s.state.SetPressed(id, false)
+			s.state.SetStopAPI(stop, false)
 		} else if !pressed && stop.Pressed {
-			s.state.SetPressed(id, true)
+			s.state.SetStopAPI(stop, true)
 		}
 	}
 
@@ -96,14 +116,27 @@ func (s *Server) apiStops(w http.ResponseWriter, r *http.Request) {
 		// get the query string
 		query := r.URL.Query()
 		// get the piston
-		piston := query.Get("piston")
+		pistonStr := query.Get("piston")
+
 		// update the state of the piston if there is a piston
-		if piston != "" {
+		if pistonStr != "" {
+			piston, err := strconv.Atoi(pistonStr)
+			if err != nil {
+				common.Cont(err)
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
 			s.state.SetPiston(piston, stops)
 		} else {
 			// otherwise just update the current state
 			for _, stop := range stops {
-				s.state.SetPressed(stop.Group+"/"+stop.Name, stop.Pressed)
+				pressed, err := s.state.GetStopAPI(stop)
+				common.Cont(err)
+				if pressed && !stop.Pressed {
+					s.state.SetStopAPI(stop, false)
+				} else if !pressed && stop.Pressed {
+					s.state.SetStopAPI(stop, true)
+				}
 			}
 		}
 
@@ -189,7 +222,7 @@ func (s *Server) apiHandlePushStop(w http.ResponseWriter, r *http.Request) {
 	}
 	id := scanner.Text()
 
-	pressed, err := s.state.GetPressed(id)
+	pressed, err := s.state.GetStopFromID(id)
 	if err != nil {
 		common.Cont(err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -197,7 +230,12 @@ func (s *Server) apiHandlePushStop(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// toggle the state of the press
-	s.state.SetPressed(id, !pressed)
+	err = s.state.SetStopFromID(id, !pressed)
+	if err != nil {
+		common.Cont(err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 
 	// send a success message
 	w.WriteHeader(http.StatusOK)
