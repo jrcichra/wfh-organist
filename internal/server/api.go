@@ -70,14 +70,17 @@ func (s *Server) apiHandlePiston(w http.ResponseWriter, r *http.Request) {
 
 	stops := s.state.GetPiston(piston)
 
-	// send a program change to channels 0-2 (aka. human 1-3)
-	// the value of the last byte is the piston number
-	for i := 0; i < 3; i++ {
-		s.notesChan <- types.ProgramChange{
-			Time:    time.Now(),
-			Channel: uint8(i),
-			Program: uint8(piston),
-		}
+	var program int
+	if piston == 0 {
+		program = 7
+	} else {
+		program = piston - 1
+	}
+
+	s.notesChan <- types.ProgramChange{
+		Time:    time.Now(),
+		Channel: 0,
+		Program: uint8(program),
 	}
 
 	// tell notes chan what stops to press
@@ -127,14 +130,17 @@ func (s *Server) apiStops(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			// send a program change to channels 0-2 (aka. human 1-3)
-			// the value of the last byte is the piston number
-			for i := 0; i < 3; i++ {
-				s.notesChan <- types.ProgramChange{
-					Time:    time.Now(),
-					Channel: uint8(i),
-					Program: uint8(piston),
-				}
+			var program int
+			if piston == 0 {
+				program = 7
+			} else {
+				program = piston - 1
+			}
+
+			s.notesChan <- types.ProgramChange{
+				Time:    time.Now(),
+				Channel: 0,
+				Program: uint8(program),
 			}
 
 			s.state.SetPiston(piston, stops)
