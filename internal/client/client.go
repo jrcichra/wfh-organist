@@ -453,7 +453,7 @@ func midiClientFeedback(wg *sync.WaitGroup, closedChan chan struct{}, conn net.C
 					common.Cont(err)
 				}
 				midiTuxChan <- types.MidiTuxMessage{
-					Color: color.FgBlue,
+					Color: color.FgHiBlue,
 					T:     t.Body,
 					Ms:    ms,
 				}

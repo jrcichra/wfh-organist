@@ -240,7 +240,7 @@ func (s *Server) apiHandlePushStop(w http.ResponseWriter, r *http.Request) {
 	}
 	id := scanner.Text()
 
-	pressed, err := s.state.GetStopFromID(id)
+	pressed, err := s.state.GetStopPressedFromID(id)
 	if err != nil {
 		common.Cont(err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -248,7 +248,7 @@ func (s *Server) apiHandlePushStop(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// toggle the state of the press
-	err = s.state.SetStopFromID(id, !pressed)
+	err = s.state.SetStopPressedFromID(id, !pressed)
 	if err != nil {
 		common.Cont(err)
 		w.WriteHeader(http.StatusBadRequest)

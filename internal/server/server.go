@@ -189,7 +189,7 @@ func (s *Server) sendNotes() {
 		case types.Raw:
 			ms := common.HandleMs(m.Time)
 			s.MidiTuxChan <- types.MidiTuxMessage{
-				Color: color.FgBlue,
+				Color: color.FgHiBlue,
 				T:     m,
 				Ms:    ms,
 			}

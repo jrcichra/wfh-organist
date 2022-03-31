@@ -99,6 +99,15 @@ func (s *State) GetStopCode(providedStop APIStop) (string, error) {
 	return "", errors.New("stop " + id + " not found")
 }
 
+func (s *State) GetStopCodeFromID(id string) (string, error) {
+	for _, stop := range s.config.Stops {
+		if s.GetStopID(stop) == id {
+			return stop.Code, nil
+		}
+	}
+	return "", errors.New("stop " + id + " not found")
+}
+
 func (s *State) GetStopsForAPI() []APIStop {
 
 	stops := s.config.Stops
@@ -184,10 +193,18 @@ func (s *State) codeToNotesChan(id string, code string, pressed bool) (bool, err
 	return pressed, nil
 }
 
-func (s *State) GetStopFromID(id string) (bool, error) {
+func (s *State) GetStopPressedFromID(id string) (bool, error) {
 	return s.convertPressed(s.kvGet(id))
 }
 
-func (s *State) SetStopFromID(id string, value bool) error {
-	return s.kvPut(id, strconv.FormatBool(value))
+func (s *State) SetStopPressedFromID(id string, value bool) error {
+	err := s.kvPut(id, strconv.FormatBool(value))
+	common.Cont(err)
+
+	code, err := s.GetStopCodeFromID(id)
+	common.Cont(err)
+
+	_, err = s.codeToNotesChan(id, code, value)
+	common.Cont(err)
+	return err
 }
