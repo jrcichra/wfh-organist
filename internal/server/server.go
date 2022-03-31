@@ -20,16 +20,17 @@ import (
 )
 
 type Server struct {
-	Profile     string
-	MidiPort    int
-	Port        int
-	DontRecord  bool
-	state       *state.State
-	notesChan   chan interface{}
-	stops       *config.Config
-	MidiTuxChan chan types.MidiTuxMessage
-	out         midi.Out
-	in          midi.In
+	Profile      string
+	MidiPort     int
+	Port         int
+	DontRecord   bool
+	state        *state.State
+	notesChan    chan interface{}
+	feedbackChan chan interface{}
+	stops        *config.Config
+	MidiTuxChan  chan types.MidiTuxMessage
+	out          midi.Out
+	in           midi.In
 }
 
 func (s *Server) startHTTP() {
@@ -60,6 +61,7 @@ func (s *Server) Run() {
 
 	//send notes listening to a go channel
 	s.notesChan = make(chan interface{})
+	s.feedbackChan = make(chan interface{})
 	go s.sendNotes()
 
 	// record to a file
@@ -84,25 +86,34 @@ func (s *Server) Run() {
 		log.Println("Notes connection from:", c.RemoteAddr())
 		log.Println("Ready to play music!")
 
+		enc := gob.NewEncoder(c)
+		stopChan := make(chan bool)
+		go func() {
+			for {
+				select {
+				case feedback := <-s.feedbackChan:
+					err := enc.Encode(types.TCPMessage{Body: feedback})
+					common.Cont(err)
+				case <-stopChan:
+					return
+				}
+			}
+		}()
+
 		go func() {
 			dec := gob.NewDecoder(c)
-			enc := gob.NewEncoder(c)
 			for {
 				var t types.TCPMessage
 				err := dec.Decode(&t)
 				if err == io.EOF {
 					log.Println("Connection closed by client.")
+					stopChan <- true
 					c.Close()
 					return
 				}
-				common.Must(err)
+				common.Cont(err)
 				// send through the channel
 				s.notesChan <- t.Body
-				// and send it through feedback channel
-				err = enc.Encode(types.TCPMessage{Body: t.Body})
-				if err != nil {
-					log.Println(err)
-				}
 			}
 		}()
 	}
@@ -120,6 +131,9 @@ func (s *Server) sendNotes() {
 
 	for {
 		input := <-s.notesChan
+
+		// send it back through the feedback channel
+		s.feedbackChan <- input
 		// determine the type of message
 		switch m := input.(type) {
 		case types.NoteOn:
