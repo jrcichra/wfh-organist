@@ -1,4 +1,3 @@
-import Peer from "peerjs";
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import Display from "./components/Display";
@@ -6,9 +5,9 @@ import Panic from "./components/Panic";
 import Piston from "./components/Piston";
 import RockerTab from "./components/RockerTab";
 import "./Home.css";
-import Video from "./components/Video";
 import Play from "./components/Play";
 import Stop from "./components/Stop";
+import "./components/Video.css";
 
 const videoOptions: MediaTrackConstraints = {
   frameRate: 2,
@@ -23,16 +22,8 @@ type StopType = {
 };
 
 function Home() {
-  const location = useLocation();
-  const [myID, setMyID]: [any, any] = useState("");
-  const [remoteID, setRemoteID]: [any, any] = useState("");
-  const peer: any = useRef(null);
-
   const [selectedPiston, setSelectedPiston]: [any, any] = useState("-");
   const [pressedPiston, setPressedPiston]: [any, any] = useState(false);
-
-  const [localStream, setLocalStream]: [any, any] = useState(null);
-  const [remoteStream, setRemoteStream]: [any, any] = useState(null);
 
   const [midiFile, setMidiFile]: [any, any] = useState("");
   const [midiFiles, setMidiFiles]: [any, any] = useState([]);
@@ -109,44 +100,6 @@ function Home() {
   }, [selectedPiston, pressedPiston]);
 
   useEffect(() => {
-    if (new URLSearchParams(location.search).get("mode") === "server") {
-      peer.current = new Peer("wfh-organist-server");
-      setMyID("wfh-organist-server");
-      setRemoteID("wfh-organist-client");
-    } else {
-      peer.current = new Peer("wfh-organist-client");
-      setMyID("wfh-organist-client");
-      setRemoteID("wfh-organist-server");
-    }
-
-    peer.current.on("open", (id: any) => {
-      console.log("My peer ID is: " + id);
-      setMyID(id);
-    });
-
-    peer.current.on("connection", (conn: any) => {
-      console.log("Connection made");
-      conn.on("data", (data: any) => {
-        console.log("Received data: " + data);
-      });
-    });
-
-    peer.current.on("call", (call: any) => {
-      console.log("Received call");
-      (async () => {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: videoOptions,
-          audio: false,
-        });
-        setLocalStream(stream);
-        call.answer(stream);
-        call.on("stream", (remoteStream: any) => {
-          console.log("Received remote stream");
-          setRemoteStream(remoteStream);
-        });
-      })();
-    });
-
     // get the list of midi files
     fetch("/api/midi/files")
       .then((res) => res.json())
@@ -161,27 +114,6 @@ function Home() {
         setStops(data);
       });
   }, []);
-
-  const videoCall = () => {
-    (async () => {
-      console.log("Starting call");
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: videoOptions,
-        audio: false,
-      });
-      setLocalStream(stream);
-      const call = peer.current.call(remoteID, stream);
-      call.on("stream", (remoteStream: any) => {
-        setRemoteStream(remoteStream);
-      });
-    })();
-  };
-
-  useEffect(() => {
-    if (myID === "wfh-organist-client") {
-      videoCall();
-    }
-  }, [myID]);
 
   return (
     <div className="wrapper">
@@ -250,27 +182,11 @@ function Home() {
         </div>
       </div>
       <div className="col">
-        <div className="videos">
-          <div>
-            <Video
-              title="Local"
-              className="localVideo"
-              muted
-              autoPlay
-              playsInline
-              srcObject={localStream}
-            />
-          </div>
-          <div>
-            <Video
-              title="Remote"
-              className="remoteVideo"
-              autoPlay
-              playsInline
-              srcObject={remoteStream}
-            />
-          </div>
-        </div>
+        <img
+          src="https://wfho-video.jrcichra.dev/"
+          alt="wfho-video"
+          className="remoteVideo"
+        />
       </div>
     </div>
   );
