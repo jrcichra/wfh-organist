@@ -7,6 +7,7 @@ import RockerTab from "./components/RockerTab";
 import "./Home.css";
 import Play from "./components/Play";
 import Stop from "./components/Stop";
+import Set from "./components/Set";
 import "./components/Video.css";
 
 const videoOptions: MediaTrackConstraints = {
@@ -150,23 +151,24 @@ function Home() {
         <span className="pistonGap"></span>
         <span className="pistonGap"></span>
         <Panic />
-        {midiFiles.map((file: string) => (
-          <>
-            <input
-              id={file}
-              type="radio"
-              name="midiFile"
-              value={file}
-              onClick={(e) => setMidiFile(e.currentTarget.value)}
-            />
-            <label htmlFor={file}>{file}</label>
-          </>
-        ))}
         <Play midiFile={midiFile} />
         <Stop />
+        <select
+          name="midiFile"
+          id="midiFile"
+          onChange={(e) => setMidiFile(e.currentTarget.value)}
+        >
+          <option value=""></option>
+          {midiFiles.map((file: string) => (
+            <>
+              <option value={file}>{file}</option>
+              <label htmlFor={file}>{file}</label>
+            </>
+          ))}
+        </select>
         <p className="title">General Pistons</p>
         <div className="col">
-          <Piston text="Set" value="true" set={setSetMode} />
+          <Set text="Set" value="true" set={setSetMode} />
           <span className="pistonGap"></span>
           <Piston text="1" value="1" set={setPiston} />
           <Piston text="2" value="2" set={setPiston} />

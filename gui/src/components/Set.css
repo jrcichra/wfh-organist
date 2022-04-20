@@ -1,0 +1,32 @@
+.setButton {
+    padding: 2rem 0rem;
+    width: 3.5rem;
+    height: 2rem;
+    font-size: 1rem;
+    text-align: center;
+    cursor: pointer;
+    outline: solid;
+    color: #161515;
+    background-color: #ffffff;
+    border: none;
+    border-radius: 2rem;
+    box-shadow: 0 .4rem rgb(129, 129, 129);
+    margin: -.3rem .3rem;
+  }
+  
+
+.setButtonActive {
+  color: #ffffff;
+  background-color: #161515;
+  padding: 2rem 0rem;
+  width: 3.5rem;
+  height: 2rem;
+  font-size: 1rem;
+  text-align: center;
+  cursor: pointer;
+  outline: solid;
+  border: none;
+  border-radius: 2rem;
+  box-shadow: 0 .4rem rgb(255, 253, 253);
+  margin: -.3rem .3rem;
+}
