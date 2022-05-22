@@ -104,19 +104,17 @@ func expandAllNotesOffSignal(out midi.Out) {
 }
 
 func CheckAllNotesOff(data []byte) bool {
+	ret := false
 	firstByte := data[0]
 	secondByte := data[1]
 	thirdByte := data[2]
 	switch firstByte {
 	case 0xb0, 0xb1, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7, 0xb8, 0xb9, 0xba, 0xbb, 0xbc, 0xbd, 0xbe, 0xbf:
 		if secondByte == 0x7b && thirdByte == 0x00 {
-			return true
-		} else {
-			return false
+			ret = true
 		}
-	default:
-		return false
 	}
+	return ret
 }
 
 func SetupCloseHandler(out midi.Out, stopChan chan bool) {

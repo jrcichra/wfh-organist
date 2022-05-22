@@ -4,7 +4,7 @@ function Panic() {
   return (
     <button
       onClick={() => {
-        fetch("/api/midi/raw");
+        fetch("/api/midi/panic");
       }}
       className="panicButton"
     >

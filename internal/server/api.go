@@ -33,7 +33,7 @@ func (s *Server) handleAPI() http.Handler {
 		case "/api/midi/stops":
 			s.apiStops(w, r)
 		case "/api/midi/panic":
-			// s.apiHandlePanic(w, r)
+			s.apiHandlePanic(w, r)
 		case "/api/midi/piston":
 			s.apiHandlePiston(w, r)
 		default:
@@ -182,19 +182,28 @@ func (s *Server) apiHandleStat(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(files)
 }
 
+func (s *Server) handlePanicButton() {
+	// send all notes off
+	s.notesChan <- types.Raw{
+		Time: time.Now(),
+		Data: []byte{0xB0, 0x7B, 0x00},
+	}
+}
+
 func (s *Server) apiHandleStopButton(w http.ResponseWriter, r *http.Request) {
 	select {
 	case stopPlayingChan <- true:
 		time.Sleep(time.Millisecond * 500)
-		// send all notes off
-		s.notesChan <- types.Raw{
-			Time: time.Now(),
-			Data: []byte{0xB0, 0x7B, 0x00},
-		}
+		s.handlePanicButton()
 		w.WriteHeader(http.StatusOK)
 	default:
 		w.WriteHeader(http.StatusInternalServerError)
 	}
+}
+
+func (s *Server) apiHandlePanic(w http.ResponseWriter, r *http.Request) {
+	s.handlePanicButton()
+	w.WriteHeader(http.StatusOK)
 }
 
 func (s *Server) apiHandlePlay(w http.ResponseWriter, r *http.Request) {
