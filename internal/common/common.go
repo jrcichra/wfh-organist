@@ -72,27 +72,28 @@ func GetLists() {
 
 func ExpandAllNotesOff(m types.Raw, ms int64, midiTuxChan chan types.MidiTuxMessage, out midi.Out) {
 	// for all channels
-	var channel byte
-	for channel = 0; channel < 16; channel++ {
+	for channel := uint8(0); channel < 16; channel++ {
 		firstByte := channel + 0x90
 		for k := uint8(0); k <= 0x7F; k++ {
+			code := []byte{firstByte, k, 0}
 			midiTuxChan <- types.MidiTuxMessage{
 				Color: color.FgHiRed,
-				T:     m,
-				Ms:    ms,
+				T: types.Raw{
+					Data: code,
+				},
+				Ms: ms,
 			}
 			// dont overwhelm the midi output
 			time.Sleep(1 * time.Millisecond)
-			_, err := out.Write([]byte{firstByte, k, 0})
+			_, err := out.Write(code)
 			Cont(err)
 		}
 	}
 }
 
-func expandAllNotesOffSignal(out midi.Out) {
+func allNotesOff(out midi.Out) {
 	// for all channels
-	var channel byte
-	for channel = 0; channel < 16; channel++ {
+	for channel := uint8(0); channel < 16; channel++ {
 		firstByte := channel + 0x90
 		for k := uint8(0); k <= 0x7F; k++ {
 			// dont overwhelm the midi output
@@ -127,7 +128,7 @@ func SetupCloseHandler(out midi.Out, stopChan chan bool) {
 		case stopChan <- true:
 		default:
 		}
-		expandAllNotesOffSignal(out)
+		allNotesOff(out)
 		log.Println("Exiting...")
 		os.Exit(0)
 	}()

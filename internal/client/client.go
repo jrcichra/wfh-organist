@@ -443,15 +443,11 @@ func midiClientFeedback(wg *sync.WaitGroup, closedChan chan struct{}, conn net.C
 					Ms:    ms,
 				}
 			case types.Raw:
+				// The client doesn't do all notes expansion, only the server
 				ms := common.HandleMs(m.Time)
-				if common.CheckAllNotesOff(m.Data) {
-					// all notes off expansion
-					common.ExpandAllNotesOff(m, ms, midiTuxChan, out)
-				} else {
-					// write the raw bytes to the MIDI device
-					_, err := out.Write(m.Data)
-					common.Cont(err)
-				}
+				// write the raw bytes to the MIDI device
+				_, err := out.Write(m.Data)
+				common.Cont(err)
 				midiTuxChan <- types.MidiTuxMessage{
 					Color: color.FgHiBlue,
 					T:     t.Body,

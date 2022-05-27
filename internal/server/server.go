@@ -209,7 +209,7 @@ func (s *Server) sendNotes() {
 			}
 			if common.CheckAllNotesOff(m.Data) {
 				// all notes off expansion
-				common.ExpandAllNotesOff(m, ms, s.MidiTuxChan, s.out)
+				go common.ExpandAllNotesOff(m, ms, s.MidiTuxChan, s.out)
 			} else {
 				// write the raw bytes to the MIDI device
 				_, err := s.out.Write(m.Data)
