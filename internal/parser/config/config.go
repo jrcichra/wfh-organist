@@ -4,7 +4,7 @@ import (
 	"io/ioutil"
 
 	"github.com/jrcichra/wfh-organist/internal/common"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 type Stop struct {
