@@ -1,7 +1,9 @@
 # wfh-organist [![Go Report Card](https://goreportcard.com/badge/github.com/jrcichra/wfh-organist)](https://goreportcard.com/report/github.com/jrcichra/wfh-organist) [![Go](https://github.com/jrcichra/wfh-organist/actions/workflows/go.yml/badge.svg)](https://github.com/jrcichra/wfh-organist/actions/workflows/go.yml) [![React](https://github.com/jrcichra/wfh-organist/actions/workflows/react.yml/badge.svg)](https://github.com/jrcichra/wfh-organist/actions/workflows/react.yml)
 
+<p align="center">
 <img src="https://raw.githubusercontent.com/egonelbre/gophers/10cc13c5e29555ec23f689dc985c157a8d4692ab/vector/computer/music.svg" width="250">
 <img src="https://raw.githubusercontent.com/egonelbre/gophers/10cc13c5e29555ec23f689dc985c157a8d4692ab/vector/arts/upright.svg" width="300">
+</p>
 
 Be a Work-From-Home Organist. Written in Go. Send MIDI over regular TCP/IP to your local church.
 
