@@ -3,6 +3,7 @@
 <p align="center">
 <img src="https://raw.githubusercontent.com/egonelbre/gophers/10cc13c5e29555ec23f689dc985c157a8d4692ab/vector/computer/music.svg" width="250">
 <img src="https://raw.githubusercontent.com/egonelbre/gophers/10cc13c5e29555ec23f689dc985c157a8d4692ab/vector/arts/upright.svg" width="300">
+<img src="https://raw.githubusercontent.com/egonelbre/gophers/10cc13c5e29555ec23f689dc985c157a8d4692ab/.thumb/animation/gopher-dance-long-3x.gif" width="150">
 </p>
 
 Be a Work-From-Home Organist. Written in Go. Send MIDI over regular TCP/IP to your local church.
