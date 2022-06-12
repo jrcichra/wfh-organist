@@ -132,8 +132,12 @@ func (s *Server) sendNotes() {
 	for {
 		input := <-s.notesChan
 
-		// send it back through the feedback channel
-		s.feedbackChan <- input
+		// send it back through the feedback channel - if sending it wouldn't block
+		select {
+		case s.feedbackChan <- input:
+		default:
+		}
+
 		// determine the type of message
 		switch m := input.(type) {
 		case types.NoteOn:
