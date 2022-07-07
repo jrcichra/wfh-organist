@@ -1,6 +1,6 @@
 module github.com/jrcichra/wfh-organist
 
-go 1.17
+go 1.18
 
 require (
 	git.mills.io/prologic/bitcask v1.0.2
@@ -19,6 +19,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/plar/go-adaptive-radix-tree v1.0.4 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
-	golang.org/x/exp v0.0.0-20220518171630-0b5c67f07fdf // indirect
-	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
+	golang.org/x/exp v0.0.0-20220706164943-b4a6d9510983 // indirect
+	golang.org/x/sys v0.0.0-20220704084225-05e143d24a9e // indirect
 )

@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
 import Display from "./components/Display";
 import Panic from "./components/Panic";
 import Piston from "./components/Piston";
@@ -9,12 +8,6 @@ import Play from "./components/Play";
 import Stop from "./components/Stop";
 import Set from "./components/Set";
 import "./components/Video.css";
-
-const videoOptions: MediaTrackConstraints = {
-  frameRate: 2,
-  width: 640,
-  height: 480,
-};
 
 type StopType = {
   name: string;
