@@ -2,6 +2,7 @@ package client
 
 import (
 	"bufio"
+	"context"
 	"encoding/gob"
 	"encoding/hex"
 	"fmt"
@@ -10,7 +11,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/fatih/color"
@@ -46,6 +46,8 @@ func dial(serverIP string, serverPort int, protocol string) net.Conn {
 
 func Client(midiPort int, serverIP string, serverPort int, protocol string, stdinMode bool, delay int, file string, midiTuxChan chan types.MidiTuxMessage, profile string, dontControlVolume bool) {
 
+	ctx, cancel := context.WithCancel(context.Background())
+
 	// read the csv
 	csvRecords := channels.ReadFile(profile + "channels.csv")
 
@@ -60,7 +62,7 @@ func Client(midiPort int, serverIP string, serverPort int, protocol string, stdi
 	in := common.GetMidiInput(drv, midiPort)
 	out := common.GetMidiOutput(drv, midiPort)
 
-	common.SetupCloseHandler(out, stopChan)
+	common.SetupCloseHandler(cancel, out)
 
 	// make a writer for each channel
 	writers := make([]*writer.Writer, 16)
@@ -92,16 +94,14 @@ func Client(midiPort int, serverIP string, serverPort int, protocol string, stdi
 
 	// things that would need a new connection if the connection was lost
 	for {
-		wg := &sync.WaitGroup{}
 		conn := dial(serverIP, serverPort, protocol)
-		closedChan := make(chan struct{})
 		// ability to send notes
-		wg.Add(1)
-		go sendNotesClient(wg, closedChan, conn, delay, notesChan, csvRecords, dontControlVolume)
+		go sendNotesClient(ctx, conn, delay, notesChan, csvRecords, dontControlVolume)
 		// ability to get your own notes back
-		wg.Add(1)
-		go midiClientFeedback(wg, closedChan, conn, writers, out, midiTuxChan)
-		wg.Wait() // reconnect and respawn things on the waitgroup coming back
+		go midiClientFeedback(cancel, conn, writers, out, midiTuxChan)
+		<-ctx.Done()
+		// reset the context
+		ctx, cancel = context.WithCancel(context.Background())
 	}
 }
 
@@ -159,21 +159,17 @@ func stdinClient(notesChan chan interface{}) {
 	}
 }
 
-func sendNotesClient(wg *sync.WaitGroup, closedChan chan struct{}, conn net.Conn, delay int, notesChan chan interface{}, csvRecords []types.MidiCSVRecord, dontControlVolume bool) {
+func sendNotesClient(ctx context.Context, conn net.Conn, delay int, notesChan chan interface{}, csvRecords []types.MidiCSVRecord, dontControlVolume bool) {
 
-	var t *timer.Timer
+	t := timer.NewTimer(5 * time.Second)
 	if !dontControlVolume {
-		t = &timer.Timer{}
-		timeout := t.New(5)
 		t.Start()
-
 		go func() {
 			for {
-				<-timeout
+				<-t.Done()
 				go volume.SetVolume(common.HIGH_VOLUME)
-				// make a new timer and overwrite the channel
-				t = &timer.Timer{}
-				timeout = t.New(5)
+				// restart the timer
+				t.Reset()
 				t.Start()
 			}
 		}()
@@ -185,7 +181,7 @@ func sendNotesClient(wg *sync.WaitGroup, closedChan chan struct{}, conn net.Conn
 		var msg interface{}
 		select {
 		case msg = <-notesChan:
-		case <-closedChan:
+		case <-ctx.Done():
 			reconnect = true
 			continue
 		}
@@ -340,7 +336,6 @@ func sendNotesClient(wg *sync.WaitGroup, closedChan chan struct{}, conn net.Conn
 			}
 		}()
 	}
-	wg.Done()
 }
 
 func midiClient(midiPort int, delay int, notesChan chan interface{}, in midi.In) {
@@ -360,7 +355,7 @@ func midiClient(midiPort int, delay int, notesChan chan interface{}, in midi.In)
 }
 
 // Listen for midi notes coming back so they can be printed
-func midiClientFeedback(wg *sync.WaitGroup, closedChan chan struct{}, conn net.Conn, writers []*writer.Writer, out midi.Out, midiTuxChan chan types.MidiTuxMessage) {
+func midiClientFeedback(cancel context.CancelFunc, conn net.Conn, writers []*writer.Writer, out midi.Out, midiTuxChan chan types.MidiTuxMessage) {
 
 	var t types.TCPMessage
 	dec := gob.NewDecoder(conn)
@@ -369,8 +364,7 @@ func midiClientFeedback(wg *sync.WaitGroup, closedChan chan struct{}, conn net.C
 		err := dec.Decode(&t)
 		if err == io.EOF {
 			log.Println("Connection closed by server.")
-			closedChan <- struct{}{}
-			wg.Done()
+			cancel()
 			return
 		}
 		if err != nil {

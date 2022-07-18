@@ -1,6 +1,7 @@
 package common
 
 import (
+	"context"
 	"encoding/gob"
 	"log"
 	"os"
@@ -118,16 +119,13 @@ func CheckAllNotesOff(data []byte) bool {
 	return ret
 }
 
-func SetupCloseHandler(out midi.Out, stopChan chan bool) {
+func SetupCloseHandler(cancel context.CancelFunc, out midi.Out) {
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
 		log.Println("\r- Ctrl+C pressed in Terminal. Turning off all notes and stopping the player/recorder.")
-		select {
-		case stopChan <- true:
-		default:
-		}
+		cancel()
 		allNotesOff(out)
 		log.Println("Exiting...")
 		os.Exit(0)

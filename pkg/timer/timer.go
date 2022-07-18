@@ -1,56 +1,67 @@
 package timer
 
 import (
+	"context"
 	"time"
 )
 
-// A very simple timer because I'm concerned that timer.Reset() is not going to like my use case here
+// A timer that supports resetting without impacting consumers of the timer.
 type Timer struct {
-	requestedSeconds int64
-	secondsLeft      int64
-	resetChan        chan struct{}
-	doneChan         chan struct{}
-	internalDoneChan chan struct{}
+	seconds int64
+	context context.Context
+	cancel  context.CancelFunc
+	reset   chan struct{}
 }
 
-func (t *Timer) New(seconds int64) chan struct{} {
-	t.requestedSeconds = seconds
-	t.secondsLeft = seconds
-	t.resetChan = make(chan struct{})
-	t.doneChan = make(chan struct{})
-	return t.doneChan
+func NewTimer(duration time.Duration) *Timer {
+	t := &Timer{}
+	t.seconds = int64(duration.Seconds())
+	t.context, t.cancel = context.WithCancel(context.Background())
+	t.reset = make(chan struct{})
+	return t
+}
+
+func (t *Timer) Done() <-chan struct{} {
+	return t.context.Done()
 }
 
 func (t *Timer) Start() {
+	remaining := t.seconds
 	go func() {
 		for {
-
-			if t.secondsLeft <= 0 {
-				t.doneChan <- struct{}{}
-				t.internalDoneChan <- struct{}{}
-				return
-			}
-			// Sleep and subtract a second
-			time.Sleep(1 * time.Second)
-			t.secondsLeft -= 1
-		}
-	}()
-
-	go func() {
-		for {
-			// see if a reset is requested
 			select {
-			case <-t.resetChan:
-				// reset the timer
-				t.secondsLeft = t.requestedSeconds
-			case <-t.internalDoneChan:
+			case <-t.reset:
+				remaining = t.seconds
+			case <-t.context.Done():
 				return
+			default:
+				time.Sleep(1 * time.Second)
+				remaining--
+				// log.Println("Remaining:", remaining)
+				if remaining <= 0 {
+					// log.Println("Called cancel for the timer because remaining is 0")
+					t.cancel()
+				}
 			}
 		}
 	}()
-
 }
 
 func (t *Timer) Reset() {
-	t.resetChan <- struct{}{}
+	// log.Println("context err for timer", t.context.Err())
+	if t.context.Err() == nil {
+		// reset the still running timer
+		select {
+		case t.reset <- struct{}{}:
+		case <-t.context.Done():
+		}
+	} else {
+		// reset the context if the context completed
+		t.context, t.cancel = context.WithCancel(context.Background())
+	}
+}
+
+func (t *Timer) Stop() {
+	// log.Println("Called cancel for the timer from stop")
+	t.cancel()
 }

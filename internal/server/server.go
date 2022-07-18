@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/gob"
 	"io"
 	"log"
@@ -47,6 +48,8 @@ func (s *Server) startHTTP() {
 
 func (s *Server) Run() {
 
+	context, cancel := context.WithCancel(context.Background())
+
 	// wait for someone to connect to the server
 	l, err := net.Listen("tcp", ":"+strconv.Itoa(s.Port))
 	common.Must(err)
@@ -67,9 +70,8 @@ func (s *Server) Run() {
 	// record to a file
 	if !s.DontRecord {
 		s.in = common.GetMidiInput(drv, s.MidiPort)
-		stopRecording := make(chan bool)
-		common.SetupCloseHandler(s.out, stopRecording)
-		go recorder.Record(s.in, stopRecording)
+		common.SetupCloseHandler(cancel, s.out)
+		go recorder.Record(context, s.in)
 	}
 
 	s.state = &state.State{}
