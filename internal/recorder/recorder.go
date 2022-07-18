@@ -50,7 +50,11 @@ func Record(ctx context.Context, in midi.In) error {
 				deltaticks := resolution.FractionalTicks(bpm, time.Duration(tm.deltaMicrosecs)*time.Microsecond)
 				wr.SetDelta(deltaticks)
 				inbf.Write(tm.data)
-				msg, _ := rd.Read()
+				msg, err := rd.Read()
+				if err != nil {
+					log.Println("Error reading midi message:", err)
+					continue
+				}
 				wr.Write(msg)
 			case <-timer.Done():
 				log.Println("Recording has timed out")

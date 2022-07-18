@@ -17,7 +17,7 @@ func NewTimer(duration time.Duration) *Timer {
 	t := &Timer{}
 	t.seconds = int64(duration.Seconds())
 	t.context, t.cancel = context.WithCancel(context.Background())
-	t.reset = make(chan struct{})
+	t.reset = make(chan struct{}, 1)
 	return t
 }
 
@@ -53,7 +53,7 @@ func (t *Timer) Reset() {
 		// reset the still running timer
 		select {
 		case t.reset <- struct{}{}:
-		case <-t.context.Done():
+		default:
 		}
 	} else {
 		// reset the context if the context completed
