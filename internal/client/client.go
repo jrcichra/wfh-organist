@@ -166,7 +166,11 @@ func sendNotesClient(ctx context.Context, conn net.Conn, delay int, notesChan ch
 		t.Start()
 		go func() {
 			for {
-				<-t.Done()
+				select {
+				case <-t.Done():
+				case <-ctx.Done():
+					return // quit if the context is done
+				}
 				go volume.SetVolume(common.HIGH_VOLUME)
 				// restart the timer
 				t.Reset()
@@ -189,6 +193,12 @@ func sendNotesClient(ctx context.Context, conn net.Conn, delay int, notesChan ch
 		go func() {
 			if delay > 0 {
 				time.Sleep(time.Duration(delay) * time.Millisecond)
+			}
+			// quit this routine if we're shutting down
+			select {
+			case <-ctx.Done():
+				return
+			default:
 			}
 			// process messages differently based on type
 			// this is just so we can deal with a single known struct with exposed fields

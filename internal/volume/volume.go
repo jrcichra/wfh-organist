@@ -17,7 +17,6 @@ func SetVolume(volume int) error {
 	if volume > 100 {
 		volume = 100
 	}
-
 	if curVol != volume {
 		curVol = volume
 		// get current script's directory
@@ -29,6 +28,5 @@ func SetVolume(volume int) error {
 		log.Printf("Setting volume to: %d%%\n", volume)
 		return exec.Command(path+"/volume.sh", strconv.Itoa(volume)).Run()
 	}
-
 	return nil
 }
