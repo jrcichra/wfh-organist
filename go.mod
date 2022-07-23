@@ -5,7 +5,7 @@ go 1.18
 require (
 	git.mills.io/prologic/bitcask v1.0.2
 	github.com/fatih/color v1.13.0
-	github.com/gorilla/websocket v1.4.0
+	github.com/gorilla/websocket v1.5.0
 	github.com/tarm/serial v0.0.0-20180830185346-98f6abe2eb07
 	gitlab.com/gomidi/midi v1.23.7
 	gitlab.com/gomidi/rtmididrv v0.15.0
@@ -19,7 +19,7 @@ require (
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/plar/go-adaptive-radix-tree v1.0.4 // indirect
-	github.com/sirupsen/logrus v1.8.1 // indirect
-	golang.org/x/exp v0.0.0-20220706164943-b4a6d9510983 // indirect
-	golang.org/x/sys v0.0.0-20220704084225-05e143d24a9e // indirect
+	github.com/sirupsen/logrus v1.9.0 // indirect
+	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e // indirect
+	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
 )
