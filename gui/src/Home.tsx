@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Display from "./components/Display";
 import Panic from "./components/Panic";
 import Piston from "./components/Piston";
@@ -8,6 +8,10 @@ import Play from "./components/Play";
 import Stop from "./components/Stop";
 import Set from "./components/Set";
 import "./components/Video.css";
+
+//@ts-ignore
+import { Piano, KeyboardShortcuts, MidiNumbers } from "react-piano";
+import "react-piano/dist/styles.css";
 
 type StopType = {
   name: string;
@@ -24,6 +28,16 @@ function Home() {
 
   const [stops, setStops]: [any, any] = useState([]);
   const [setMode, setSetMode]: [any, any] = useState("false");
+
+  const websocket = useRef<WebSocket>();
+
+  const firstNote = MidiNumbers.fromNote("c3");
+  const lastNote = MidiNumbers.fromNote("f5");
+  const keyboardShortcuts = KeyboardShortcuts.create({
+    firstNote: firstNote,
+    lastNote: lastNote,
+    keyboardConfig: KeyboardShortcuts.HOME_ROW,
+  });
 
   var lastGroup: string;
 
@@ -94,6 +108,23 @@ function Home() {
   }, [selectedPiston, pressedPiston]);
 
   useEffect(() => {
+    // set up the websocket
+    if (!websocket.current) {
+      websocket.current = new WebSocket(`ws://${document.location.host}/ws`);
+      websocket.current.onopen = () => {
+        console.log("Successfully Connected");
+      };
+      websocket.current.onclose = (event) => {
+        console.log("Socket Closed Connection: ", event);
+      };
+      websocket.current.onerror = (error) => {
+        console.log("Socket Error: ", error);
+      };
+      websocket.current.onmessage = (event) => {
+        console.log("Socket Message: ", event.data);
+      };
+    }
+
     // get the list of midi files
     fetch("/api/midi/files")
       .then((res) => res.json())
@@ -181,6 +212,17 @@ function Home() {
           src="https://wfho-video.jrcichra.dev/"
           alt="wfho-video"
           className="remoteVideo"
+        />
+        <Piano
+          noteRange={{ first: firstNote, last: lastNote }}
+          playNote={(midiNumber: any) => {
+            // Play a given note - see notes below
+          }}
+          stopNote={(midiNumber: any) => {
+            // Stop playing a given note - see notes below
+          }}
+          width={1000}
+          keyboardShortcuts={keyboardShortcuts}
         />
       </div>
     </div>

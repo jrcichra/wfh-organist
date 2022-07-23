@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"sync"
 
 	"github.com/fatih/color"
 	"github.com/jrcichra/wfh-organist/internal/common"
@@ -21,17 +22,18 @@ import (
 )
 
 type Server struct {
-	Profile      string
-	MidiPort     int
-	Port         int
-	DontRecord   bool
-	state        *state.State
-	notesChan    chan interface{}
-	feedbackChan chan interface{}
-	stops        *config.Config
-	MidiTuxChan  chan types.MidiTuxMessage
-	out          midi.Out
-	in           midi.In
+	Profile              string
+	MidiPort             int
+	Port                 int
+	DontRecord           bool
+	state                *state.State
+	notesChan            chan interface{}
+	feedbackChannels     map[string]chan interface{}
+	feedbackChannelMutex sync.Mutex
+	stops                *config.Config
+	MidiTuxChan          chan types.MidiTuxMessage
+	out                  midi.Out
+	in                   midi.In
 }
 
 func (s *Server) startHTTP() {
@@ -41,6 +43,8 @@ func (s *Server) startHTTP() {
 	http.Handle("/favicon.ico", http.FileServer(http.Dir("./gui/build/favicon.ico")))
 	// serve /api
 	http.Handle("/api/midi/", s.handleAPI())
+	// handle websocket
+	http.HandleFunc("/ws", s.wsEndpoint)
 	// http listener
 	log.Println("HTTP Listening on 8080")
 	http.ListenAndServe(":8080", nil)
@@ -48,7 +52,7 @@ func (s *Server) startHTTP() {
 
 func (s *Server) Run() {
 
-	context, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 
 	// wait for someone to connect to the server
 	l, err := net.Listen("tcp", ":"+strconv.Itoa(s.Port))
@@ -64,14 +68,14 @@ func (s *Server) Run() {
 
 	//send notes listening to a go channel
 	s.notesChan = make(chan interface{})
-	s.feedbackChan = make(chan interface{})
+	s.feedbackChannels = make(map[string]chan interface{})
 	go s.sendNotes()
 
 	// record to a file
 	if !s.DontRecord {
 		s.in = common.GetMidiInput(drv, s.MidiPort)
 		common.SetupCloseHandler(cancel, s.out)
-		go recorder.Record(context, s.in)
+		go recorder.Record(ctx, s.in)
 	}
 
 	s.state = &state.State{}
@@ -87,21 +91,28 @@ func (s *Server) Run() {
 		common.Must(err)
 		log.Println("Notes connection from:", c.RemoteAddr())
 		log.Println("Ready to play music!")
+		feedbackChan := make(chan interface{})
+		key := c.RemoteAddr().String()
+		s.feedbackChannelMutex.Lock()
+		s.feedbackChannels[key] = feedbackChan
+		s.feedbackChannelMutex.Unlock()
 
 		enc := gob.NewEncoder(c)
-		stopChan := make(chan bool)
+		ctx2, cancel2 := context.WithCancel(context.Background())
 		go func() {
 			for {
 				select {
-				case feedback := <-s.feedbackChan:
+				case feedback := <-feedbackChan:
 					err := enc.Encode(types.TCPMessage{Body: feedback})
 					common.Cont(err)
-				case <-stopChan:
+				case <-ctx2.Done():
+					s.feedbackChannelMutex.Lock()
+					delete(s.feedbackChannels, key)
+					s.feedbackChannelMutex.Unlock()
 					return
 				}
 			}
 		}()
-
 		go func() {
 			dec := gob.NewDecoder(c)
 			for {
@@ -109,7 +120,7 @@ func (s *Server) Run() {
 				err := dec.Decode(&t)
 				if err == io.EOF {
 					log.Println("Connection closed by client.")
-					stopChan <- true
+					cancel2()
 					c.Close()
 					return
 				}
@@ -134,10 +145,12 @@ func (s *Server) sendNotes() {
 	for {
 		input := <-s.notesChan
 
-		// send it back through the feedback channel - if sending it wouldn't block
-		select {
-		case s.feedbackChan <- input:
-		default:
+		// send it back through all feedback channels - if sending it wouldn't block
+		for _, ch := range s.feedbackChannels {
+			select {
+			case ch <- input:
+			default:
+			}
 		}
 
 		// determine the type of message

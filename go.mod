@@ -5,6 +5,7 @@ go 1.18
 require (
 	git.mills.io/prologic/bitcask v1.0.2
 	github.com/fatih/color v1.13.0
+	github.com/gorilla/websocket v1.4.0
 	github.com/tarm/serial v0.0.0-20180830185346-98f6abe2eb07
 	gitlab.com/gomidi/midi v1.23.7
 	gitlab.com/gomidi/rtmididrv v0.15.0
