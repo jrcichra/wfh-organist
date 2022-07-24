@@ -20,14 +20,16 @@ type StopType = {
 };
 
 function Home() {
-  const [selectedPiston, setSelectedPiston]: [any, any] = useState("-");
-  const [pressedPiston, setPressedPiston]: [any, any] = useState(false);
+  const [selectedPiston, setSelectedPiston] = useState<string>("-");
+  const [pressedPiston, setPressedPiston] = useState<boolean>(false);
 
-  const [midiFile, setMidiFile]: [any, any] = useState("");
-  const [midiFiles, setMidiFiles]: [any, any] = useState([]);
+  const [midiFile, setMidiFile] = useState<string>("");
+  const [midiFiles, setMidiFiles] = useState<string[]>([]);
 
-  const [stops, setStops]: [any, any] = useState([]);
-  const [setMode, setSetMode]: [any, any] = useState("false");
+  const [stops, setStops] = useState<StopType[]>([]);
+  const [setMode, setSetMode] = useState<string>("false");
+
+  const [pianoChannel, setPianoChannel] = useState<number>(1);
 
   const websocket = useRef<WebSocket>();
 
@@ -42,8 +44,8 @@ function Home() {
   var lastGroup: string;
 
   function setPressed(id: string, pressed: boolean) {
-    if (selectedPiston !== 0) {
-      setSelectedPiston(0);
+    if (selectedPiston !== "0") {
+      setSelectedPiston("0");
     }
     let tempStops: StopType[] = [...stops];
 
@@ -57,7 +59,7 @@ function Home() {
   }
 
   function setPiston(id: number) {
-    setSelectedPiston(id);
+    setSelectedPiston(id.toString());
     setPressedPiston(true);
     if (id === 0) {
       // this is the cancel button. All stops should be raised
@@ -213,13 +215,46 @@ function Home() {
           alt="wfho-video"
           className="remoteVideo"
         />
+        <select
+          name="pianoChannel"
+          id="pianoChannel"
+          value={pianoChannel}
+          onChange={(e) => setPianoChannel(Number(e.currentTarget.value))}
+        >
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].map(
+            (channel: number) => (
+              <option key={channel} value={channel}>
+                {channel}
+              </option>
+            )
+          )}
+        </select>
         <Piano
           noteRange={{ first: firstNote, last: lastNote }}
           playNote={(midiNumber: any) => {
-            // Play a given note - see notes below
+            console.log(midiNumber);
+            if (websocket.current && websocket.current.readyState === 1) {
+              websocket.current.send(
+                JSON.stringify({
+                  type: "noteOn",
+                  key: midiNumber,
+                  velocity: 127,
+                  channel: pianoChannel - 1,
+                })
+              );
+            }
           }}
           stopNote={(midiNumber: any) => {
-            // Stop playing a given note - see notes below
+            console.log(midiNumber);
+            if (websocket.current && websocket.current.readyState === 1) {
+              websocket.current.send(
+                JSON.stringify({
+                  type: "noteOff",
+                  key: midiNumber,
+                  channel: pianoChannel - 1,
+                })
+              );
+            }
           }}
           width={1000}
           keyboardShortcuts={keyboardShortcuts}

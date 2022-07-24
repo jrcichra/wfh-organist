@@ -1,11 +1,13 @@
 package server
 
 import (
-	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/jrcichra/wfh-organist/internal/types"
+	"github.com/tidwall/gjson"
 )
 
 // https://tutorialedge.net/golang/go-websocket-tutorial/
@@ -23,16 +25,15 @@ func (s *Server) wsEndpoint(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println(err)
 	}
-	// helpful log statement to show connections
-	log.Println("Client Connected")
-	err = ws.WriteMessage(1, []byte("Hi Client!"))
-	if err != nil {
-		log.Println(err)
-	}
-	reader(ws)
+	key := ws.RemoteAddr().String()
+	log.Println("Websocket Client Connected!", key)
+	s.websocketsMutex.Lock()
+	s.websockets[key] = ws
+	s.websocketsMutex.Unlock()
+	s.reader(ws)
 }
 
-func reader(conn *websocket.Conn) {
+func (s *Server) reader(conn *websocket.Conn) {
 	for {
 		// read in a message
 		_, p, err := conn.ReadMessage()
@@ -40,13 +41,27 @@ func reader(conn *websocket.Conn) {
 			log.Println(err)
 			return
 		}
-		// print out that message for clarity
-		fmt.Println(string(p))
+		json := string(p)
 
-		// if err := conn.WriteMessage(messageType, p); err != nil {
-		// 	log.Println(err)
-		// 	return
-		// }
+		// extract fields
+		typ := gjson.Get(json, "type")
 
+		switch typ.String() {
+		case "noteOn":
+			s.notesChan <- types.NoteOn{
+				Time:     time.Now(),
+				Key:      uint8(gjson.Get(json, "key").Uint()),
+				Velocity: uint8(gjson.Get(json, "velocity").Uint()),
+				Channel:  uint8(gjson.Get(json, "channel").Uint()),
+			}
+		case "noteOff":
+			s.notesChan <- types.NoteOff{
+				Time:    time.Now(),
+				Key:     uint8(gjson.Get(json, "key").Uint()),
+				Channel: uint8(gjson.Get(json, "channel").Uint()),
+			}
+		default:
+			log.Println("Unknown message type:", typ.String())
+		}
 	}
 }

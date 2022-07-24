@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/fatih/color"
+	"github.com/gorilla/websocket"
 	"github.com/jrcichra/wfh-organist/internal/common"
 	"github.com/jrcichra/wfh-organist/internal/parser/config"
 	"github.com/jrcichra/wfh-organist/internal/recorder"
@@ -30,6 +31,8 @@ type Server struct {
 	notesChan            chan interface{}
 	feedbackChannels     map[string]chan interface{}
 	feedbackChannelMutex sync.Mutex
+	websockets           map[string]*websocket.Conn
+	websocketsMutex      sync.Mutex
 	stops                *config.Config
 	MidiTuxChan          chan types.MidiTuxMessage
 	out                  midi.Out
@@ -70,6 +73,8 @@ func (s *Server) Run() {
 	s.notesChan = make(chan interface{})
 	s.feedbackChannels = make(map[string]chan interface{})
 	go s.sendNotes()
+
+	s.websockets = make(map[string]*websocket.Conn)
 
 	// record to a file
 	if !s.DontRecord {
