@@ -156,6 +156,13 @@ func (s *Server) sendNotes() {
 			default:
 			}
 		}
+		// also send it through all the websocket channels - if sending it wouldn't block
+		for _, ch := range s.websocketChannels {
+			select {
+			case ch <- input:
+			default:
+			}
+		}
 
 		// determine the type of message
 		switch m := input.(type) {
