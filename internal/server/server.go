@@ -11,7 +11,6 @@ import (
 	"sync"
 
 	"github.com/fatih/color"
-	"github.com/gorilla/websocket"
 	"github.com/jrcichra/wfh-organist/internal/common"
 	"github.com/jrcichra/wfh-organist/internal/parser/config"
 	"github.com/jrcichra/wfh-organist/internal/recorder"
@@ -23,20 +22,20 @@ import (
 )
 
 type Server struct {
-	Profile              string
-	MidiPort             int
-	Port                 int
-	DontRecord           bool
-	state                *state.State
-	notesChan            chan interface{}
-	feedbackChannels     map[string]chan interface{}
-	feedbackChannelMutex sync.Mutex
-	websockets           map[string]*websocket.Conn
-	websocketsMutex      sync.Mutex
-	stops                *config.Config
-	MidiTuxChan          chan types.MidiTuxMessage
-	out                  midi.Out
-	in                   midi.In
+	Profile                string
+	MidiPort               int
+	Port                   int
+	DontRecord             bool
+	state                  *state.State
+	notesChan              chan interface{}
+	feedbackChannels       map[string]chan interface{}
+	feedbackChannelMutex   sync.Mutex
+	websocketChannels      map[string]chan interface{}
+	websocketsChannelMutex sync.Mutex
+	stops                  *config.Config
+	MidiTuxChan            chan types.MidiTuxMessage
+	out                    midi.Out
+	in                     midi.In
 }
 
 func (s *Server) startHTTP() {
@@ -74,7 +73,7 @@ func (s *Server) Run() {
 	s.feedbackChannels = make(map[string]chan interface{})
 	go s.sendNotes()
 
-	s.websockets = make(map[string]*websocket.Conn)
+	s.websocketChannels = make(map[string]chan interface{})
 
 	// record to a file
 	if !s.DontRecord {

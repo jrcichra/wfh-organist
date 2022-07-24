@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"time"
@@ -27,18 +28,31 @@ func (s *Server) wsEndpoint(w http.ResponseWriter, r *http.Request) {
 	}
 	key := ws.RemoteAddr().String()
 	log.Println("Websocket Client Connected!", key)
-	s.websocketsMutex.Lock()
-	s.websockets[key] = ws
-	s.websocketsMutex.Unlock()
-	s.reader(ws)
+	ch := make(chan interface{})
+	s.websocketsChannelMutex.Lock()
+	s.websocketChannels[key] = ch
+	s.websocketsChannelMutex.Unlock()
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		for {
+			select {
+			case note := <-ch:
+				ws.WriteJSON(note)
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+	s.reader(ws, cancel)
 }
 
-func (s *Server) reader(conn *websocket.Conn) {
+func (s *Server) reader(conn *websocket.Conn, cancel context.CancelFunc) {
 	for {
 		// read in a message
 		_, p, err := conn.ReadMessage()
 		if err != nil {
 			log.Println(err)
+			cancel()
 			return
 		}
 		json := string(p)
