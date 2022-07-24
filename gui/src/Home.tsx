@@ -31,6 +31,8 @@ function Home() {
 
   const [pianoChannel, setPianoChannel] = useState<number>(1);
 
+  const [midiLog, setMidiLog] = useState<string>("");
+
   const websocket = useRef<WebSocket>();
 
   const firstNote = MidiNumbers.fromNote("c3");
@@ -130,6 +132,7 @@ function Home() {
       };
       websocket.current.onmessage = (event) => {
         console.log("Socket Message: ", event.data);
+        setMidiLog(midiLog + "\n" + event.data)
       };
     }
 
@@ -265,6 +268,9 @@ function Home() {
           width={1000}
           keyboardShortcuts={keyboardShortcuts}
         />
+        <textarea id="midilog">
+          {midiLog}
+        </textarea>
       </div>
     </div>
   );
