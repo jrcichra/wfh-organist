@@ -112,7 +112,13 @@ function Home() {
   useEffect(() => {
     // set up the websocket
     if (!websocket.current) {
-      websocket.current = new WebSocket(`ws://${document.location.host}/ws`);
+      let wsProtoco = "";
+      if (location.protocol === 'https:') {
+        wsProtoco = "wss"
+      } else {
+        wsProtoco = "ws"
+      }
+      websocket.current = new WebSocket(`${wsProtoco}://${document.location.host}/ws`);
       websocket.current.onopen = () => {
         console.log("Successfully Connected");
       };

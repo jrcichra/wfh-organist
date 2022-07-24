@@ -2,3 +2,4 @@ wfh-organist
 recordings
 profiles/*/state
 gui/yarn-error.log
+profiles/wosp/state.db
