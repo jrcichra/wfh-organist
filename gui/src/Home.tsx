@@ -115,12 +115,14 @@ function Home() {
     // set up the websocket
     if (!websocket.current) {
       let wsProtoco = "";
-      if (location.protocol === 'https:') {
-        wsProtoco = "wss"
+      if (location.protocol === "https:") {
+        wsProtoco = "wss";
       } else {
-        wsProtoco = "ws"
+        wsProtoco = "ws";
       }
-      websocket.current = new WebSocket(`${wsProtoco}://${document.location.host}/ws`);
+      websocket.current = new WebSocket(
+        `${wsProtoco}://${document.location.host}/ws`
+      );
       websocket.current.onopen = () => {
         console.log("Successfully Connected");
       };
@@ -132,7 +134,7 @@ function Home() {
       };
       websocket.current.onmessage = (event) => {
         console.log("Socket Message: ", event.data);
-        setMidiLog(midiLog + "\n" + event.data)
+        setMidiLog(`${midiLog}\n${event.data}\nbob`);
       };
     }
 
@@ -220,7 +222,9 @@ function Home() {
       </div>
       <div className="col">
         <img
-          src="https://wfho-video.jrcichra.dev/"
+          src={
+            import.meta.env.VITE_VIDEO_URL ?? "https://wfho-video.jrcichra.dev/"
+          }
           alt="wfho-video"
           className="remoteVideo"
         />
@@ -268,9 +272,7 @@ function Home() {
           width={1000}
           keyboardShortcuts={keyboardShortcuts}
         />
-        <textarea id="midilog">
-          {midiLog}
-        </textarea>
+        <textarea id="midilog" value={midiLog}></textarea>
       </div>
     </div>
   );

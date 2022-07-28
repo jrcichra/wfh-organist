@@ -1,0 +1,13 @@
+[Unit]
+Description=wfh-organist
+After=network.target
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/wfh-organist
+ExecStart=/home/pi/wfh-organist/wfh-organist -mode server
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

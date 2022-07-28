@@ -36,6 +36,7 @@ type Server struct {
 	MidiTuxChan            chan types.MidiTuxMessage
 	out                    midi.Out
 	in                     midi.In
+	stopPlaying            context.CancelFunc
 }
 
 func (s *Server) startHTTP() {

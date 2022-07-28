@@ -22,8 +22,11 @@ looks like 42 decimal is the lowest value. Seeing numbers separated by about 4.
 */
 
 // read the serial port assuming it's the expression pedal
-func ReadSerial(notesChan chan interface{}) {
-	c := &serial.Config{Name: "/dev/ttyACM0", Baud: 115200}
+func ReadSerial(path string, baud int, notesChan chan interface{}) {
+	if path == "" {
+		return
+	}
+	c := &serial.Config{Name: path, Baud: baud}
 	s, err := serial.OpenPort(c)
 	if err != nil {
 		common.Cont(err)

@@ -16,7 +16,6 @@ import (
 	"github.com/fatih/color"
 	"github.com/jrcichra/wfh-organist/internal/common"
 	"github.com/jrcichra/wfh-organist/internal/parser/channels"
-	"github.com/jrcichra/wfh-organist/internal/player"
 	"github.com/jrcichra/wfh-organist/internal/serial"
 	"github.com/jrcichra/wfh-organist/internal/types"
 	"github.com/jrcichra/wfh-organist/internal/volume"
@@ -44,15 +43,14 @@ func dial(serverIP string, serverPort int, protocol string) net.Conn {
 	}
 }
 
-func Client(midiPort int, serverIP string, serverPort int, protocol string, stdinMode bool, delay int, file string, midiTuxChan chan types.MidiTuxMessage, profile string, dontControlVolume bool) {
-
+// TODO: this function could be cleaner with a struct
+func Client(midiPort int, serverIP string, serverPort int, protocol string, stdinMode bool, delay int, midiTuxChan chan types.MidiTuxMessage, profile string, dontControlVolume bool, serialPath string, serialBaud int) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// read the csv
 	csvRecords := channels.ReadFile(profile + "channels.csv")
 
 	notesChan := make(chan interface{})
-	stopChan := make(chan bool)
 
 	drv, err := driver.New()
 	common.Must(err)
@@ -80,17 +78,13 @@ func Client(midiPort int, serverIP string, serverPort int, protocol string, stdi
 	go http.ListenAndServe(":8081", nil)
 
 	// in either mode read the serial for now
-	go serial.ReadSerial(notesChan)
+	go serial.ReadSerial(serialPath, serialBaud, notesChan)
 
 	if stdinMode {
 		go stdinClient(notesChan)
 	}
 
-	if file == "" {
-		go midiClient(midiPort, delay, notesChan, in)
-	} else {
-		go player.PlayMidiFile(notesChan, file, stopChan, false)
-	}
+	go midiClient(midiPort, delay, notesChan, in)
 
 	// things that would need a new connection if the connection was lost
 	for {
@@ -106,9 +100,7 @@ func Client(midiPort int, serverIP string, serverPort int, protocol string, stdi
 }
 
 func stdinClient(notesChan chan interface{}) {
-
 	channel := make(chan types.Raw)
-
 	//get stdin in a goroutine
 	go func() {
 		scanner := bufio.NewScanner(os.Stdin)
@@ -160,7 +152,6 @@ func stdinClient(notesChan chan interface{}) {
 }
 
 func sendNotesClient(ctx context.Context, conn net.Conn, delay int, notesChan chan interface{}, csvRecords []types.MidiCSVRecord, dontControlVolume bool) {
-
 	t := timer.NewTimer(5 * time.Second)
 	if !dontControlVolume {
 		t.Start()
@@ -268,7 +259,6 @@ func sendNotesClient(ctx context.Context, conn net.Conn, delay int, notesChan ch
 						reconnect = true
 					}
 				}
-
 			case channel.ControlChange:
 				channel := channels.CheckChannel(v.Channel(), csvRecords)
 				if channel != 255 {
@@ -349,7 +339,6 @@ func sendNotesClient(ctx context.Context, conn net.Conn, delay int, notesChan ch
 }
 
 func midiClient(midiPort int, delay int, notesChan chan interface{}, in midi.In) {
-
 	// listen for MIDI messages
 	rd := reader.New(
 		reader.NoLogger(),
@@ -366,10 +355,8 @@ func midiClient(midiPort int, delay int, notesChan chan interface{}, in midi.In)
 
 // Listen for midi notes coming back so they can be printed
 func midiClientFeedback(cancel context.CancelFunc, conn net.Conn, writers []*writer.Writer, out midi.Out, midiTuxChan chan types.MidiTuxMessage) {
-
 	var t types.TCPMessage
 	dec := gob.NewDecoder(conn)
-
 	for {
 		err := dec.Decode(&t)
 		if err == io.EOF {

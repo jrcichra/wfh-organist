@@ -1,0 +1,1 @@
+fluidsynth -a pulseaudio -g 5 /usr/share/soundfonts/FluidR3_GM.sf2

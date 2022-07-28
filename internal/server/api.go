@@ -2,6 +2,7 @@ package server
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -41,8 +42,6 @@ func (s *Server) handleAPI() http.Handler {
 		}
 	})
 }
-
-var stopPlayingChan = make(chan bool)
 
 func (s *Server) apiHandlePiston(w http.ResponseWriter, r *http.Request) {
 	// make sure it's a post
@@ -129,20 +128,17 @@ func (s *Server) apiStops(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
-
 			var program int
 			if piston == 0 {
 				program = 7
 			} else {
 				program = piston - 1
 			}
-
 			s.notesChan <- types.ProgramChange{
 				Time:    time.Now(),
 				Channel: 0,
 				Program: uint8(program),
 			}
-
 			s.state.SetPiston(piston, stops)
 		} else {
 			// otherwise if there's no piston this must be the cancel
@@ -191,14 +187,15 @@ func (s *Server) handlePanicButton() {
 }
 
 func (s *Server) apiHandleStopButton(w http.ResponseWriter, r *http.Request) {
-	select {
-	case stopPlayingChan <- true:
-		time.Sleep(time.Millisecond * 500)
-		s.handlePanicButton()
-		w.WriteHeader(http.StatusOK)
-	default:
-		w.WriteHeader(http.StatusInternalServerError)
+	if s.stopPlaying == nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
 	}
+	s.stopPlaying()
+	s.stopPlaying = nil
+	time.Sleep(time.Millisecond * 500)
+	s.handlePanicButton()
+	w.WriteHeader(http.StatusOK)
 }
 
 func (s *Server) apiHandlePanic(w http.ResponseWriter, r *http.Request) {
@@ -213,12 +210,6 @@ func (s *Server) apiHandlePlay(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// stop anything in progress
-	select {
-	case stopPlayingChan <- true:
-	default:
-	}
-
 	// get the filename from the body
 	scanner := bufio.NewScanner(r.Body)
 	if !scanner.Scan() {
@@ -227,7 +218,16 @@ func (s *Server) apiHandlePlay(w http.ResponseWriter, r *http.Request) {
 	}
 	filename := scanner.Text()
 	// start a player that opens the filename specified
-	go player.PlayMidiFile(s.notesChan, "midi/"+filename, stopPlayingChan, true)
+	var ctx context.Context
+	// stop the current player before starting a new one
+	if s.stopPlaying != nil {
+		s.stopPlaying()
+		time.Sleep(time.Millisecond * 500)
+		s.handlePanicButton()
+		time.Sleep(time.Second * 3)
+	}
+	ctx, s.stopPlaying = context.WithCancel(context.Background())
+	go player.PlayMidiFile(ctx, s.notesChan, "midi/"+filename, true)
 	// send a success message
 	w.WriteHeader(http.StatusOK)
 }
