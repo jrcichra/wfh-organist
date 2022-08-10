@@ -195,11 +195,12 @@ function Home() {
           id="midiFile"
           onChange={(e) => setMidiFile(e.currentTarget.value)}
         >
-          <option value=""></option>
+          <option key="" value=""></option>
           {midiFiles.map((file: string) => (
             <>
-              <option value={file}>{file}</option>
-              <label htmlFor={file}>{file}</label>
+              <option key={file} value={file}>
+                {file}
+              </option>
             </>
           ))}
         </select>
@@ -272,7 +273,7 @@ function Home() {
           width={1000}
           keyboardShortcuts={keyboardShortcuts}
         />
-        <textarea id="midilog" value={midiLog}></textarea>
+        <textarea id="midilog" value={midiLog} readOnly></textarea>
       </div>
     </div>
   );
