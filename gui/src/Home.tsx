@@ -223,9 +223,7 @@ function Home() {
       </div>
       <div className="col">
         <img
-          src={
-            import.meta.env.VITE_VIDEO_URL ?? "https://wfho-video.jrcichra.dev/"
-          }
+          src={import.meta.env.VITE_VIDEO_URL ?? "http://10.99.99.12:8081/"}
           alt="wfho-video"
           className="remoteVideo"
         />
