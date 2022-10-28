@@ -20,7 +20,8 @@ func main() {
 	// get args
 	serverIP := flag.String("server", "localhost", "server IP")
 	serverPort := flag.Int("port", 3131, "server port")
-	midiPort := flag.Int("midi", 1, "midi port")
+	midiPortIn := flag.Int("midi-in", 1, "midi port in")
+	midiPortOut := flag.Int("midi-out", 1, "midi port out")
 	list := flag.Bool("list", false, "list available ports")
 	mode := flag.String("mode", "local", "client, server, or local (runs both)")
 	protocol := flag.String("protocol", "tcp", "tcp only (udp not implemented yet)")
@@ -31,6 +32,7 @@ func main() {
 	dontRecord := flag.Bool("norecord", false, "continuously record midi")
 	serialPath := flag.String("serialPath", "", "serial port path")
 	serialBaud := flag.Int("serialBaud", 115200, "serial port baud rate")
+	feedback := flag.Bool("feedback", false, "send notes back through the network")
 
 	flag.Parse()
 
@@ -68,11 +70,13 @@ func main() {
 	go miditux.MidiTux(midiTuxChan)
 
 	server := server.Server{
-		MidiPort:    *midiPort,
+		MidiPortIn:  *midiPortIn,
+		MidiPortOut: *midiPortOut,
 		Port:        *serverPort,
 		Profile:     *profile,
 		DontRecord:  *dontRecord,
 		MidiTuxChan: midiTuxChan,
+		Feedback:    *feedback,
 	}
 
 	// operate in client or server mode
@@ -80,13 +84,13 @@ func main() {
 	case "server":
 		go server.Run()
 	case "client":
-		go client.Client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay, midiTuxChan, *profile, *dontControlVolume, *serialPath, *serialBaud)
+		go client.Client(*midiPortIn, *serverIP, *serverPort, *protocol, *stdinMode, *delay, midiTuxChan, *profile, *dontControlVolume, *serialPath, *serialBaud)
 	case "local":
 		// run both (unless serverIP is set, and sleep forever
 		if *serverIP == "localhost" {
 			go server.Run()
 		}
-		go client.Client(*midiPort, *serverIP, *serverPort, *protocol, *stdinMode, *delay, midiTuxChan, *profile, *dontControlVolume, *serialPath, *serialBaud)
+		go client.Client(*midiPortIn, *serverIP, *serverPort, *protocol, *stdinMode, *delay, midiTuxChan, *profile, *dontControlVolume, *serialPath, *serialBaud)
 	default:
 		log.Fatalf("Unknown mode: %s. Must be 'server' or 'client'\n", *mode)
 	}

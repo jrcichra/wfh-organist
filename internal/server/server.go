@@ -12,7 +12,6 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/jrcichra/wfh-organist/internal/common"
-	"github.com/jrcichra/wfh-organist/internal/parser/config"
 	"github.com/jrcichra/wfh-organist/internal/recorder"
 	"github.com/jrcichra/wfh-organist/internal/state"
 	"github.com/jrcichra/wfh-organist/internal/types"
@@ -23,7 +22,8 @@ import (
 
 type Server struct {
 	Profile                string
-	MidiPort               int
+	MidiPortIn             int
+	MidiPortOut            int
 	Port                   int
 	DontRecord             bool
 	state                  *state.State
@@ -32,11 +32,11 @@ type Server struct {
 	feedbackChannelMutex   sync.Mutex
 	websocketChannels      map[string]chan interface{}
 	websocketsChannelMutex sync.Mutex
-	stops                  *config.Config
 	MidiTuxChan            chan types.MidiTuxMessage
 	out                    midi.Out
 	in                     midi.In
 	stopPlaying            context.CancelFunc
+	Feedback               bool
 }
 
 func (s *Server) startHTTP() {
@@ -67,7 +67,7 @@ func (s *Server) Run() {
 	// make sure to close all open ports at the end
 	defer drv.Close()
 
-	s.out = common.GetMidiOutput(drv, s.MidiPort)
+	s.out = common.GetMidiOutput(drv, s.MidiPortOut)
 
 	//send notes listening to a go channel
 	s.notesChan = make(chan interface{})
@@ -78,7 +78,7 @@ func (s *Server) Run() {
 
 	// record to a file
 	if !s.DontRecord {
-		s.in = common.GetMidiInput(drv, s.MidiPort)
+		s.in = common.GetMidiInput(drv, s.MidiPortIn)
 		common.SetupCloseHandler(cancel, s.out)
 		go recorder.Record(ctx, s.in)
 	}
@@ -108,8 +108,10 @@ func (s *Server) Run() {
 			for {
 				select {
 				case feedback := <-feedbackChan:
-					err := enc.Encode(types.TCPMessage{Body: feedback})
-					common.Cont(err)
+					if s.Feedback {
+						err := enc.Encode(types.TCPMessage{Body: feedback})
+						common.Cont(err)
+					}
 				case <-ctx2.Done():
 					s.feedbackChannelMutex.Lock()
 					delete(s.feedbackChannels, key)
