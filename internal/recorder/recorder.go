@@ -61,7 +61,7 @@ func Record(ctx context.Context, in midi.In) error {
 				if wr != nil {
 					wr.Write(meta.EndOfTrack)
 					// get the epoch
-					file := fmt.Sprintf("recordings/%d.mid", time.Now().Unix())
+					file := fmt.Sprintf("recordings/%s.mid", time.Now().Format("2006-01-02__15_04_05"))
 					log.Println("Writing to", file)
 					ioutil.WriteFile(file, outbf.Bytes(), 0644)
 					// reset for a new file when a new note comes in
