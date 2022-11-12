@@ -33,6 +33,7 @@ func main() {
 	serialPath := flag.String("serialPath", "", "serial port path")
 	serialBaud := flag.Int("serialBaud", 115200, "serial port baud rate")
 	feedback := flag.Bool("feedback", false, "send notes back through the network")
+	readSerial := flag.Bool("serial", false, "read serial input for expression petal")
 
 	flag.Parse()
 
@@ -84,13 +85,13 @@ func main() {
 	case "server":
 		go server.Run()
 	case "client":
-		go client.Client(*midiPortIn, *serverIP, *serverPort, *protocol, *stdinMode, *delay, midiTuxChan, *profile, *dontControlVolume, *serialPath, *serialBaud)
+		go client.Client(*midiPortIn, *serverIP, *serverPort, *protocol, *stdinMode, *delay, midiTuxChan, *profile, *dontControlVolume, *readSerial, *serialPath, *serialBaud)
 	case "local":
 		// run both (unless serverIP is set, and sleep forever
 		if *serverIP == "localhost" {
 			go server.Run()
 		}
-		go client.Client(*midiPortIn, *serverIP, *serverPort, *protocol, *stdinMode, *delay, midiTuxChan, *profile, *dontControlVolume, *serialPath, *serialBaud)
+		go client.Client(*midiPortIn, *serverIP, *serverPort, *protocol, *stdinMode, *delay, midiTuxChan, *profile, *dontControlVolume, *readSerial, *serialPath, *serialBaud)
 	default:
 		log.Fatalf("Unknown mode: %s. Must be 'server' or 'client'\n", *mode)
 	}

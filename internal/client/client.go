@@ -44,7 +44,7 @@ func dial(serverIP string, serverPort int, protocol string) net.Conn {
 }
 
 // TODO: this function could be cleaner with a struct
-func Client(midiPort int, serverIP string, serverPort int, protocol string, stdinMode bool, delay int, midiTuxChan chan types.MidiTuxMessage, profile string, dontControlVolume bool, serialPath string, serialBaud int) {
+func Client(midiPort int, serverIP string, serverPort int, protocol string, stdinMode bool, delay int, midiTuxChan chan types.MidiTuxMessage, profile string, dontControlVolume bool, readSerial bool, serialPath string, serialBaud int) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// read the csv
@@ -78,7 +78,9 @@ func Client(midiPort int, serverIP string, serverPort int, protocol string, stdi
 	go http.ListenAndServe(":8081", nil)
 
 	// in either mode read the serial for now
-	go serial.ReadSerial(serialPath, serialBaud, notesChan)
+	if readSerial {
+		go serial.ReadSerial(serialPath, serialBaud, notesChan)
+	}
 
 	if stdinMode {
 		go stdinClient(notesChan)
