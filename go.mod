@@ -7,7 +7,7 @@ require (
 	github.com/fatih/color v1.15.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/tarm/serial v0.0.0-20180830185346-98f6abe2eb07
-	github.com/tidwall/gjson v1.14.4
+	github.com/tidwall/gjson v1.15.0
 	gitlab.com/gomidi/midi v1.23.7
 	gitlab.com/gomidi/rtmididrv v0.15.0
 	gopkg.in/yaml.v3 v3.0.1
