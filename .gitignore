@@ -3,4 +3,4 @@ recordings
 profiles/*/state
 gui/yarn-error.log
 profiles/wosp/state.db
-node_modules/.yarn-integrity
+node_modules/
