@@ -3,7 +3,7 @@ module github.com/jrcichra/wfh-organist
 go 1.18
 
 require (
-	git.mills.io/prologic/bitcask v1.0.2
+	git.mills.io/prologic/bitcask/v2 v2.1.3
 	github.com/fatih/color v1.18.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/tarm/serial v0.0.0-20180830185346-98f6abe2eb07
